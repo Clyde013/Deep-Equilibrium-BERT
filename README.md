@@ -1,5 +1,7 @@
 # bert-ode
 
+TorchDyn github https://github.com/diffeqml/torchdyn
+
 Pytorch Implementation of differentiable ODE Solvers https://github.com/rtqichen/torchdiffeq
 
 Example implementations https://github.com/msurtsukov/neural-ode
