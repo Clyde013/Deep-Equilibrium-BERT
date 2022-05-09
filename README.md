@@ -27,6 +27,12 @@ Write the report paper so I can graduate.
 
 profit????
 
+# Environment Setup
+```
+pip freeze > requirements.txt
+pip install -r requirements.txt
+```
+
 # References
 
 TorchDyn github https://github.com/diffeqml/torchdyn
