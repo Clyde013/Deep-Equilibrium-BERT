@@ -14,6 +14,11 @@ So, I guess now we can combine TorchDyn supported ODEs with HuggingFace models w
 
 Unfortunately, BERT pretraining took 52 hours with colab's cloud based TPUs. So this is a problem for when I actually implement and try training the model to validate that it works.
 
+Foreseeable issues:
+
+Numerical instability will occur when using treating each block as a first order ODE. The ODE transformer paper addresses this using the Runge Kutta method and treating multiple blocks as higher order ODEs. However we can also just directly use Deep Equilibrium Models as DEQs are basically ODEs where t_span approaches infinity (i.e. infinitely many ODE blocks / infinite order ODE), with the added benefit that since we are solving for the equilibrium point directly, we do not care about tracing the solution path that brings us there (useful in other applications, but not in transformers).
+
+
 # TODO
 
 ## URGENT
@@ -55,6 +60,8 @@ Huggingface training BERT for MLM and NSP https://stackoverflow.com/questions/65
 Arxiv Neural ODE https://arxiv.org/pdf/1806.07366.pdf
 
 Arxiv ODE Transformer https://arxiv.org/pdf/2104.02308.pdf
+
+Arxiv Deep Equilibrium Models https://arxiv.org/pdf/1909.01377.pdf
 
 Openpaper Review of Transformer ODE from multi-particle system POV https://openreview.net/forum?id=SJl1o2NFwS
 

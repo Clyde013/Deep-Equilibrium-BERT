@@ -7,6 +7,8 @@ from packaging import version
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
+from torchdyn.core import NeuralODE
+
 from transformers.activations import ACT2FN, gelu
 from transformers.modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
@@ -27,7 +29,7 @@ from transformers.utils import (
     logging,
     replace_return_docstrings,
 )
-from transformers.models.configuration_roberta import RobertaConfig
+from transformers.models.roberta.configuration_roberta import RobertaConfig
 
 
 logger = logging.get_logger(__name__)
@@ -45,6 +47,16 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "roberta-large-openai-detector",
     # See all RoBERTa models at https://huggingface.co/models?filter=roberta
 ]
+
+class FinalTrajectoryLayer(nn.Module):
+    """
+    y_hat returned by neuralODE has elements from each interval of t_span, this layer returns the final interval
+    """
+    def __init__(self):
+        super(FinalTrajectoryLayer, self).__init__()
+    
+    def forward(self, x):
+        return x[-1]
 
 
 class RobertaEmbeddings(nn.Module):
@@ -265,17 +277,25 @@ class RobertaSelfAttention(nn.Module):
 
 # Copied from transformers.models.bert.modeling_bert.BertSelfOutput
 class RobertaSelfOutput(nn.Module):
+    """
+    Changes made such that this becomes a neuralODE
+    """
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        
+        self.neuralODE = NeuralODE(nn.Sequential(self.dense,
+                                                 self.dropout),
+                                   return_t_eval=False)
 
     def forward(self, hidden_states: torch.Tensor, input_tensor: torch.Tensor) -> torch.Tensor:
-        hidden_states = self.dense(hidden_states)
-        hidden_states = self.dropout(hidden_states)
-        hidden_states = self.LayerNorm(hidden_states + input_tensor)
-        return hidden_states
+        # pre-norm implementation
+        hidden_states = self.LayerNorm(hidden_states)
+        y_hat = self.neuralODE(hidden_states)
+        
+        return y_hat[-1]
 
 
 # Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->Roberta
