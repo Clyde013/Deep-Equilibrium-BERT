@@ -1,4 +1,6 @@
-# bert-ode
+# implicit-bert
+
+## bert-ode
 
 Okay so let's try to implement this thing that probably won't work because I suck.
 
@@ -18,14 +20,14 @@ Foreseeable issues:
 
 Numerical instability will occur when using treating each block as a first order ODE. The ODE transformer paper addresses this using the Runge Kutta method and treating multiple blocks as higher order ODEs. However we can also just directly use Deep Equilibrium Models as DEQs are basically ODEs where t_span approaches infinity (i.e. infinitely many ODE blocks / infinite order ODE), with the added benefit that since we are solving for the equilibrium point directly, we do not care about tracing the solution path that brings us there (useful in other applications, but not in transformers).
 
+## bert-deq
+
+Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementation. Github [here](https://github.com/locuslab/deq). Can probably reference the [Julia blogpost](https://julialang.org/blog/2021/10/DEQ/) for theoretical understanding, then implement with torchdyn library.
 
 # TODO
 
 ## URGENT
-- [x] FINISH OSCAR.PY MODULE
-- [ ] Go through [TorchDyn tutorial notebooks](https://github.com/DiffEqML/torchdyn/tree/master/tutorials) and learn how to actually use the library.
-- [ ] Figure out how tf to extend HuggingFace's BERT implementation to support ODEs.
-- [ ] Write the training loop using LightningModule
+- [ ] IMPLEMENT AS DEQ
 - [ ] TRAIN
 
 ## _MEH_ URGENCY
@@ -34,6 +36,12 @@ Numerical instability will occur when using treating each block as a first order
 - [ ] Properly learn the math... should probably do this yep.
 - [ ] Write the report paper so I can graduate.
 - [ ] profit????
+
+## DONE
+- [x] FINISH OSCAR.PY MODULE
+- [x] Go through [TorchDyn tutorial notebooks](https://github.com/DiffEqML/torchdyn/tree/master/tutorials) and learn how to actually use the library.
+- [x] Figure out how tf to extend HuggingFace's BERT implementation to support ODEs.
+- [x] Write the training loop using LightningModule
 
 # Environment Setup
 ```
@@ -62,6 +70,10 @@ Arxiv Neural ODE https://arxiv.org/pdf/1806.07366.pdf
 Arxiv ODE Transformer https://arxiv.org/pdf/2104.02308.pdf
 
 Arxiv Deep Equilibrium Models https://arxiv.org/pdf/1909.01377.pdf
+
+Github DEQ https://github.com/locuslab/deq
+
+Julia blogpost on DEQ and ODE https://julialang.org/blog/2021/10/DEQ/
 
 Openpaper Review of Transformer ODE from multi-particle system POV https://openreview.net/forum?id=SJl1o2NFwS
 
