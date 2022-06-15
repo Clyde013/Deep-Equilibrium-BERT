@@ -29,6 +29,7 @@ It seems like the residual connection in the roberta model is in [RobertaSelfOut
 # TODO
 
 ## URGENT
+- [ ] TURN ROBERTA FROM RESIDUAL CONNECTIONS TO WEIGHT TIED MODEL (RESIDUALS BECOME INPUT INJECTION)
 - [ ] IMPLEMENT AS DEQ
 - [ ] TRAIN
 

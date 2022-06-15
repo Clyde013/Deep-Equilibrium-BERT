@@ -443,7 +443,7 @@ class RobertaLayer(nn.Module):
     def feed_forward_chunk(self, attention_output):
         intermediate_output = self.intermediate(attention_output)
         layer_output = self.output(intermediate_output, attention_output)
-        return layer_output    
+        return layer_output   
     
     
 # RobertaLayer changed specifically for DEQ
@@ -468,7 +468,7 @@ class DEQRobertaLayer(nn.Module):
         output_attentions: Optional[bool] = False,
     ) -> Tuple[torch.Tensor]:
         # output of robertalayer that we want is wrapped in tuple since extra elements are provided if is_decoder=True
-        f = lambda x: self.layer(x)[0]
+        f = lambda x: self.layer(x, attention_mask, head_mask, encoder_hidden_states, encoder_attention_mask, past_key_value, output_attentions)[0]
         
         z0 = torch.zeros_like(hidden_states)
 
@@ -491,6 +491,10 @@ class DEQRobertaLayer(nn.Module):
                 return new_grad
 
             self.hook = new_z_star.register_hook(backward_hook)
+            
+        print(f"self.training {self.training}")
+        print(f"DEQ RobertaLayer forward pass hidden_states of shape {hidden_states.shape}: {hidden_states}")
+        print(f"DEQRobertaLayer forward pass output: {new_z_star}")
         return (new_z_star,)
 
     def feed_forward_chunk(self, attention_output):
@@ -504,7 +508,7 @@ class RobertaEncoder(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.layer = nn.ModuleList([DEQRobertaLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layer = DEQRobertaLayer(config)
         self.gradient_checkpointing = False
 
     def forward(
@@ -525,53 +529,56 @@ class RobertaEncoder(nn.Module):
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
 
         next_decoder_cache = () if use_cache else None
-        for i, layer_module in enumerate(self.layer):
-            if output_hidden_states:
-                all_hidden_states = all_hidden_states + (hidden_states,)
+        
+        # changes here from enumerating a stack of robertalayers to single pass through of DEQRobertaLayer
+        if output_hidden_states:
+            all_hidden_states = all_hidden_states + (hidden_states,)
 
-            layer_head_mask = head_mask[i] if head_mask is not None else None
-            past_key_value = past_key_values[i] if past_key_values is not None else None
+        i = 0
+        layer_head_mask = head_mask[i] if head_mask is not None else None
+        past_key_value = past_key_values[i] if past_key_values is not None else None
 
-            if self.gradient_checkpointing and self.training:
+        if self.gradient_checkpointing and self.training:
 
-                if use_cache:
-                    logger.warning(
-                        "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
-                    )
-                    use_cache = False
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, past_key_value, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
-                    hidden_states,
-                    attention_mask,
-                    layer_head_mask,
-                    encoder_hidden_states,
-                    encoder_attention_mask,
-                )
-            else:
-                layer_outputs = layer_module(
-                    hidden_states,
-                    attention_mask,
-                    layer_head_mask,
-                    encoder_hidden_states,
-                    encoder_attention_mask,
-                    past_key_value,
-                    output_attentions,
-                )
-
-            hidden_states = layer_outputs[0]
             if use_cache:
-                next_decoder_cache += (layer_outputs[-1],)
-            if output_attentions:
-                all_self_attentions = all_self_attentions + (layer_outputs[1],)
-                if self.config.add_cross_attention:
-                    all_cross_attentions = all_cross_attentions + (layer_outputs[2],)
+                logger.warning(
+                    "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
+                )
+                use_cache = False
+
+            def create_custom_forward(module):
+                def custom_forward(*inputs):
+                    return module(*inputs, past_key_value, output_attentions)
+
+                return custom_forward
+
+            layer_outputs = torch.utils.checkpoint.checkpoint(
+                create_custom_forward(layer_module),
+                hidden_states,
+                attention_mask,
+                layer_head_mask,
+                encoder_hidden_states,
+                encoder_attention_mask,
+            )
+        else:
+            layer_outputs = self.layer(
+                hidden_states,
+                attention_mask,
+                layer_head_mask,
+                encoder_hidden_states,
+                encoder_attention_mask,
+                past_key_value,
+                output_attentions,
+            )
+
+        print(f"RobertaEncoder layer outputs: {layer_outputs}")
+        hidden_states = layer_outputs[0]
+        if use_cache:
+            next_decoder_cache += (layer_outputs[-1],)
+        if output_attentions:
+            all_self_attentions = all_self_attentions + (layer_outputs[1],)
+            if self.config.add_cross_attention:
+                all_cross_attentions = all_cross_attentions + (layer_outputs[2],)
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
@@ -873,6 +880,7 @@ class RobertaModel(RobertaPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
+        print(encoder_outputs)
         sequence_output = encoder_outputs[0]
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
 
