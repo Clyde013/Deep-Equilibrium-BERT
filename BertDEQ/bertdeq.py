@@ -5,6 +5,7 @@ import torch
 import torch.utils.checkpoint
 from packaging import version
 from torch import nn
+import torch.autograd as autograd
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 from transformers.activations import ACT2FN, gelu
@@ -46,6 +47,67 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "roberta-large-openai-detector",
     # See all RoBERTa models at https://huggingface.co/models?filter=roberta
 ]
+
+
+# RobertaLayer changed specifically for DEQ
+class DEQRobertaLayer(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.layer = RobertaLayer(config)
+        self.hook = None
+
+        self.f_solver = anderson
+        self.b_solver = broyden
+        self.f_thres = 100
+        self.b_thres = 100
+
+    def forward(
+            self,
+            hidden_states: torch.Tensor,
+            attention_mask: Optional[torch.FloatTensor] = None,
+            head_mask: Optional[torch.FloatTensor] = None,
+            encoder_hidden_states: Optional[torch.FloatTensor] = None,
+            encoder_attention_mask: Optional[torch.FloatTensor] = None,
+            past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
+            output_attentions: Optional[bool] = False,
+    ) -> Tuple[torch.Tensor]:
+        # output of robertalayer that we want is wrapped in tuple since extra elements are provided if is_decoder=True
+        f = lambda x: self.layer(x, attention_mask, head_mask, encoder_hidden_states, encoder_attention_mask,
+                                 past_key_value, output_attentions)[0]
+
+        z0 = torch.zeros_like(hidden_states)
+
+        # Forward pass
+        with torch.no_grad():
+            z_star = self.f_solver(f, z0, threshold=self.f_thres)['result']
+            new_z_star = z_star
+
+        # (Prepare for) Backward pass
+        if self.training:
+            new_z_star = f(z_star.requires_grad_())
+
+            def backward_hook(grad):
+                if self.hook is not None:
+                    self.hook.remove()
+                    torch.cuda.synchronize()  # To avoid infinite recursion
+                # Compute the fixed point of yJ + grad, where J=J_f is the Jacobian of f at z_star
+                new_grad = self.b_solver(lambda y: autograd.grad(new_z_star, z_star, y, retain_graph=True)[0] + grad,
+                                         torch.zeros_like(grad), threshold=self.b_thres)['result']
+                return new_grad
+
+            self.hook = new_z_star.register_hook(backward_hook)
+
+        """
+        print(f"self.training {self.training}")
+        print(f"DEQ RobertaLayer forward pass hidden_states of shape {hidden_states.shape}: {hidden_states}")
+        print(f"DEQRobertaLayer forward pass output: {new_z_star}")
+        """
+        return (new_z_star,)
+
+    def feed_forward_chunk(self, attention_output):
+        intermediate_output = self.intermediate(attention_output)
+        layer_output = self.output(intermediate_output, attention_output)
+        return layer_output
 
 
 class RobertaEmbeddings(nn.Module):
@@ -443,63 +505,6 @@ class RobertaLayer(nn.Module):
     def feed_forward_chunk(self, attention_output):
         intermediate_output = self.intermediate(attention_output)
         layer_output = self.output(intermediate_output, attention_output)
-        return layer_output   
-    
-    
-# RobertaLayer changed specifically for DEQ
-class DEQRobertaLayer(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.layer = RobertaLayer(config)
-        
-        self.f_solver = anderson
-        self.b_solver = broyden
-        self.f_thres = 100
-        self.b_thres = 100
-    
-    def forward(
-        self,
-        hidden_states: torch.Tensor,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        encoder_attention_mask: Optional[torch.FloatTensor] = None,
-        past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
-        output_attentions: Optional[bool] = False,
-    ) -> Tuple[torch.Tensor]:
-        # output of robertalayer that we want is wrapped in tuple since extra elements are provided if is_decoder=True
-        f = lambda x: self.layer(x, attention_mask, head_mask, encoder_hidden_states, encoder_attention_mask, past_key_value, output_attentions)[0]
-        
-        z0 = torch.zeros_like(hidden_states)
-
-        # Forward pass
-        with torch.no_grad():
-            z_star = self.f_solver(f, z0, threshold=self.f_thres)['result']
-            new_z_star = z_star
-
-        # (Prepare for) Backward pass
-        if self.training:
-            new_z_star = f(z_star.requires_grad_())
-
-            def backward_hook(grad):
-                if self.hook is not None:
-                    self.hook.remove()
-                    torch.cuda.synchronize()   # To avoid infinite recursion
-                # Compute the fixed point of yJ + grad, where J=J_f is the Jacobian of f at z_star
-                new_grad = self.b_solver(lambda y: autograd.grad(new_z_star, z_star, y, retain_graph=True)[0] + grad,
-                                         torch.zeros_like(grad), threshold=self.b_thres)['result']
-                return new_grad
-
-            self.hook = new_z_star.register_hook(backward_hook)
-            
-        print(f"self.training {self.training}")
-        print(f"DEQ RobertaLayer forward pass hidden_states of shape {hidden_states.shape}: {hidden_states}")
-        print(f"DEQRobertaLayer forward pass output: {new_z_star}")
-        return (new_z_star,)
-
-    def feed_forward_chunk(self, attention_output):
-        intermediate_output = self.intermediate(attention_output)
-        layer_output = self.output(intermediate_output, attention_output)
         return layer_output
 
 
@@ -529,7 +534,7 @@ class RobertaEncoder(nn.Module):
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
 
         next_decoder_cache = () if use_cache else None
-        
+
         # changes here from enumerating a stack of robertalayers to single pass through of DEQRobertaLayer
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)

@@ -1,4 +1,4 @@
-# Modified based on the DEQ repo.
+# Taken from https://github.com/locuslab/deq/blob/master/lib/solvers.py
 
 import torch
 from torch import nn
@@ -221,7 +221,7 @@ def anderson(f, x0, m=6, lam=1e-4, threshold=50, eps=1e-3, stop_mode='rel', beta
         n = min(k, m)
         G = F[:,:n]-X[:,:n]
         H[:,1:n+1,1:n+1] = torch.bmm(G,G.transpose(1,2)) + lam*torch.eye(n, dtype=x0.dtype,device=x0.device)[None]
-        alpha = torch.solve(y[:,:n+1], H[:,:n+1,:n+1])[0][:, 1:n+1, 0]   # (bsz x n)
+        alpha = torch.linalg.solve(H[:,:n+1,:n+1], y[:,:n+1])[:, 1:n+1, 0]   # (bsz x n)
         
         X[:,k%m] = beta * (alpha[:,None] @ F[:,:n])[:,0] + (1-beta)*(alpha[:,None] @ X[:,:n])[:,0]
         F[:,k%m] = f(X[:,k%m].reshape_as(x0)).reshape(bsz, -1)
