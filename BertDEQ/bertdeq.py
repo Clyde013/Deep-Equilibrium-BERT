@@ -5,6 +5,7 @@ import torch
 import torch.utils.checkpoint
 from packaging import version
 from torch import nn
+import torch.nn.functional as F
 import torch.autograd as autograd
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
@@ -53,6 +54,8 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
 class DEQRobertaLayer(nn.Module):
     def __init__(self, config):
         super().__init__()
+
+        self.config = config
         self.layer = RobertaLayer(config)
         self.hook = None
 
@@ -60,6 +63,25 @@ class DEQRobertaLayer(nn.Module):
         self.b_solver = broyden
         self.f_thres = 100
         self.b_thres = 100
+
+        self.forward_out = None
+        self.backward_out = None
+
+    def residual_forward(self,
+                         hidden_states: torch.Tensor,
+                         initial_hidden_state: torch.Tensor,
+                         attention_mask: Optional[torch.FloatTensor] = None,
+                         head_mask: Optional[torch.FloatTensor] = None,
+                         encoder_hidden_states: Optional[torch.FloatTensor] = None,
+                         encoder_attention_mask: Optional[torch.FloatTensor] = None,
+                         past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
+                         output_attentions: Optional[bool] = False
+                         ):
+        out = list(self.layer(hidden_states, attention_mask, head_mask, encoder_hidden_states,
+                   encoder_attention_mask, past_key_value, output_attentions))
+        out[0] = F.layer_norm(initial_hidden_state + out[0], (self.config.hidden_size,))
+
+        return tuple(out)
 
     def forward(
             self,
@@ -72,14 +94,17 @@ class DEQRobertaLayer(nn.Module):
             output_attentions: Optional[bool] = False,
     ) -> Tuple[torch.Tensor]:
         # output of robertalayer that we want is wrapped in tuple since extra elements are provided if is_decoder=True
-        f = lambda x: self.layer(x, attention_mask, head_mask, encoder_hidden_states, encoder_attention_mask,
-                                 past_key_value, output_attentions)[0]
+        f = lambda x: self.residual_forward(x, hidden_states, attention_mask, head_mask, encoder_hidden_states,
+                                            encoder_attention_mask, past_key_value, output_attentions)[0]
 
+        # initial estimate of fixed_point. Will heavily influence the output.
         z0 = torch.zeros_like(hidden_states)
 
         # Forward pass
         with torch.no_grad():
-            z_star = self.f_solver(f, z0, threshold=self.f_thres)['result']
+            out = self.f_solver(f, z0, threshold=self.f_thres)
+            self.forward_out = out
+            z_star = out['result']
             new_z_star = z_star
 
         # (Prepare for) Backward pass
@@ -91,17 +116,14 @@ class DEQRobertaLayer(nn.Module):
                     self.hook.remove()
                     torch.cuda.synchronize()  # To avoid infinite recursion
                 # Compute the fixed point of yJ + grad, where J=J_f is the Jacobian of f at z_star
-                new_grad = self.b_solver(lambda y: autograd.grad(new_z_star, z_star, y, retain_graph=True)[0] + grad,
-                                         torch.zeros_like(grad), threshold=self.b_thres)['result']
+                out = self.b_solver(lambda y: autograd.grad(new_z_star, z_star, y, retain_graph=True)[0] + grad,
+                                         torch.zeros_like(grad), threshold=self.b_thres)
+                self.backward_out = out
+                new_grad = out['result']
                 return new_grad
 
             self.hook = new_z_star.register_hook(backward_hook)
 
-        """
-        print(f"self.training {self.training}")
-        print(f"DEQ RobertaLayer forward pass hidden_states of shape {hidden_states.shape}: {hidden_states}")
-        print(f"DEQRobertaLayer forward pass output: {new_z_star}")
-        """
         return (new_z_star,)
 
     def feed_forward_chunk(self, attention_output):

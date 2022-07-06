@@ -27,10 +27,9 @@ Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementati
 It seems like the residual connection in the roberta model is in [RobertaSelfOutput](https://github.com/huggingface/transformers/blob/v4.19.2/src/transformers/models/roberta/modeling_roberta.py#L286). Might have to subclass and rewrite everything up until RobertaLayer to accept the residual inputs from solver.
 
 # TODO
-- [x] Finish requirements installation
+- [x] TURN ROBERTA FROM RESIDUAL CONNECTIONS TO WEIGHT TIED MODEL (RESIDUALS BECOME INPUT INJECTION)
 
 ## URGENT
-- [ ] TURN ROBERTA FROM RESIDUAL CONNECTIONS TO WEIGHT TIED MODEL (RESIDUALS BECOME INPUT INJECTION)
 - [ ] IMPLEMENT AS DEQ
 - [ ] TRAIN
 
