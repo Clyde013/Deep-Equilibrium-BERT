@@ -50,7 +50,7 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
 ]
 
 
-# RobertaLayer changed specifically for DEQ
+# DEQ Override: RobertaLayer changed specifically for DEQ
 class DEQRobertaLayer(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -530,7 +530,7 @@ class RobertaLayer(nn.Module):
         return layer_output
 
 
-# Copied from transformers.models.bert.modeling_bert.BertEncoder with Bert->Roberta
+# DEQ Override
 class RobertaEncoder(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -580,7 +580,7 @@ class RobertaEncoder(nn.Module):
                 return custom_forward
 
             layer_outputs = torch.utils.checkpoint.checkpoint(
-                create_custom_forward(layer_module),
+                create_custom_forward(self.layer),
                 hidden_states,
                 attention_mask,
                 layer_head_mask,
@@ -598,7 +598,6 @@ class RobertaEncoder(nn.Module):
                 output_attentions,
             )
 
-        print(f"RobertaEncoder layer outputs: {layer_outputs}")
         hidden_states = layer_outputs[0]
         if use_cache:
             next_decoder_cache += (layer_outputs[-1],)
@@ -657,22 +656,18 @@ class RobertaPreTrainedModel(PreTrainedModel):
     base_model_prefix = "roberta"
     supports_gradient_checkpointing = True
 
-    # Copied from transformers.models.bert.modeling_bert.BertPreTrainedModel._init_weights
+    # DEQ override, change the weight initialisation scheme to make initial values smaller
     def _init_weights(self, module):
-        """Initialize the weights"""
-        if isinstance(module, nn.Linear):
+        """ Initialize the weights """
+        if isinstance(module, (nn.Linear, nn.Embedding)):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
-            if module.bias is not None:
-                module.bias.data.zero_()
-        elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
-            if module.padding_idx is not None:
-                module.weight.data[module.padding_idx].zero_()
+            module.weight.data.normal_(0, 0.01)
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
+        if isinstance(module, nn.Linear) and module.bias is not None:
+            module.bias.data.zero_()
 
     def _set_gradient_checkpointing(self, module, value=False):
         if isinstance(module, RobertaEncoder):
@@ -907,7 +902,6 @@ class RobertaModel(RobertaPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        print(encoder_outputs)
         sequence_output = encoder_outputs[0]
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
 
