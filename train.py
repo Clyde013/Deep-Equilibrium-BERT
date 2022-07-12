@@ -21,7 +21,7 @@ data_collator = DataCollatorForLanguageModeling(
 training_args = TrainingArguments(
     output_dir="./models",
     overwrite_output_dir=True,
-    num_train_epochs=1,
+    max_steps=10_000,
     per_gpu_train_batch_size=64,
     save_steps=10_000,
     save_total_limit=2,
@@ -34,3 +34,5 @@ trainer = Trainer(
     data_collator=data_collator,
     train_dataset=oscar_dataset,
 )
+
+trainer.train()

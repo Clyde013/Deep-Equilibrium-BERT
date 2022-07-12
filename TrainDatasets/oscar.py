@@ -29,7 +29,7 @@ class OSCARDataModule(LightningDataModule):
 
         self.dataset = None
 
-    def setup(self, stage: str):
+    def setup(self, stage: str = None):
         # stream the dataset as it is too large to download
         self.dataset = datasets.load_dataset("oscar", self.subset_name, streaming=True, split="train")
         self.dataset = self.dataset.shuffle(seed=69, buffer_size=self.buffer_size)
