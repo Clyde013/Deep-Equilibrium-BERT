@@ -31,7 +31,7 @@ from transformers.utils import (
 )
 from transformers.models.roberta.configuration_roberta import RobertaConfig
 
-from solvers import broyden, anderson
+from BertDEQ.solvers import broyden, anderson
 
 logger = logging.get_logger(__name__)
 

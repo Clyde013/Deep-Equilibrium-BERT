@@ -17,7 +17,7 @@ import torch.autograd as autograd
 from transformers.models.roberta.configuration_roberta import RobertaConfig
 from transformers import RobertaTokenizer
 
-from bertdeq import DEQRobertaLayer
+from BertDEQ.bertdeq import DEQRobertaLayer
 
 import matplotlib.pyplot as plt
 
