@@ -11,6 +11,7 @@ tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 model = RobertaForMaskedLM(config=config)
 
 oscar_datamodule = oscar.OSCARDataModule(tokenizer)
+oscar_datamodule.setup()
 oscar_dataset = oscar_datamodule.dataset
 
 data_collator = DataCollatorForLanguageModeling(

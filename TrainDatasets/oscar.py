@@ -27,6 +27,8 @@ class OSCARDataModule(LightningDataModule):
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
 
+        self.dataset = None
+
     def setup(self, stage: str):
         # stream the dataset as it is too large to download
         self.dataset = datasets.load_dataset("oscar", self.subset_name, streaming=True, split="train")
