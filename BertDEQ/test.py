@@ -37,13 +37,20 @@ def init_weights(module):
         module.bias.data.zero_()
 
 
-x = torch.randn(1, 8, 768)
+print(torch.cuda.is_available())
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+
 config = RobertaConfig(is_decoder=False, training=False)
 
 layer = DEQRobertaLayer(config)
 layer = layer.apply(init_weights)
+layer.cuda(device)
 
-input_tensor = torch.randn((1, 3, 768))
+input_tensor = torch.randn((1, 3, 768)).to(device)
+
+print(input_tensor.device)
+
 out = layer(input_tensor)[0]
 
 (out * torch.randn_like(out)).sum().backward()
