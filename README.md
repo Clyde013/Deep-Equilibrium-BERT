@@ -31,8 +31,6 @@ It seems like the residual connection in the roberta model is in [RobertaSelfOut
 
 ## _MEH_ URGENCY
 - [ ] THE PILE DATASET NOT WORKING
-- [ ] Add co co as contributor ;)
-- [ ] Properly learn the math... should probably do this yep.
 - [ ] Write the report paper so I can graduate.
 - [ ] profit????
 
