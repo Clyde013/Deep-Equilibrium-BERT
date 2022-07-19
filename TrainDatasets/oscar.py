@@ -1,4 +1,4 @@
-from transformers import DataCollatorForLanguageModeling, PreTrainedTokenizerBase
+from transformers import DataCollatorForLanguageModeling, PreTrainedTokenizerBase, RobertaTokenizer
 from torch.utils.data import DataLoader
 import datasets
 from pytorch_lightning import LightningDataModule
@@ -56,3 +56,13 @@ class OSCARDataModule(LightningDataModule):
         features = self.tokenizer(example_batch["text"], max_length=self.max_seq_length, padding="max_length",
                                   truncation=True, return_tensors="pt")
         return features
+
+
+if __name__ == "__main__":
+    tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+
+    oscar_datamodule = OSCARDataModule(tokenizer)
+    oscar_datamodule.setup()
+    oscar_dataset = oscar_datamodule.dataset
+
+    print(next(iter(oscar_dataset)))
