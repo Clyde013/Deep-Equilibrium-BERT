@@ -5,8 +5,12 @@ from transformers import RobertaTokenizer, RobertaConfig, DataCollatorForLanguag
 from transformers import Trainer, TrainingArguments
 from BertDEQ.bertdeq import RobertaForMaskedLM
 
-config = RobertaConfig(is_decoder=False)
+config = RobertaConfig.from_pretrained("roberta-base")
+config.is_decoder = False
 tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+
+print(f"config vocab size: {config.vocab_size}")
+print(f"tokenizer vocab size: {tokenizer.vocab_size}")
 
 model = RobertaForMaskedLM(config=config)
 
@@ -22,7 +26,7 @@ training_args = TrainingArguments(
     output_dir="./models",
     overwrite_output_dir=True,
     max_steps=10_000,
-    per_device_train_batch_size=64,
+    per_device_train_batch_size=2,
     save_steps=10_000,
     save_total_limit=2,
     prediction_loss_only=True,
