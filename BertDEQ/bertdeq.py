@@ -32,6 +32,9 @@ from transformers.utils import (
 from transformers.models.roberta.configuration_roberta import RobertaConfig
 
 from BertDEQ.solvers import broyden, anderson
+from BertDEQ.jacobian import jac_loss_estimate
+
+import numpy as np
 
 logger = logging.get_logger(__name__)
 
@@ -52,6 +55,9 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
 
 # DEQ Override: RobertaLayer changed specifically for DEQ
 class DEQRobertaLayer(nn.Module):
+    # the extra parameters might need to be propagated forward, beyond the iterative solvers
+    layer_outputs = None
+
     def __init__(self, config):
         super().__init__()
 
@@ -59,10 +65,18 @@ class DEQRobertaLayer(nn.Module):
         self.layer = RobertaLayer(config)
         self.hook = None
 
-        self.f_solver = anderson
-        self.b_solver = broyden
-        self.f_thres = 100
-        self.b_thres = 100
+        if self.config.f_solver == "anderson":
+            self.f_solver = anderson
+        else:
+            self.f_solver = broyden
+
+        if self.config.b_solver == "anderson":
+            self.b_solver = anderson
+        else:
+            self.b_solver = broyden
+
+        self.f_thres = self.config.f_thres
+        self.b_thres = self.config.b_thres
 
         self.forward_out = None
         self.backward_out = None
@@ -77,11 +91,12 @@ class DEQRobertaLayer(nn.Module):
                          past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
                          output_attentions: Optional[bool] = False
                          ):
-        out = list(self.layer(hidden_states, attention_mask, head_mask, encoder_hidden_states,
-                              encoder_attention_mask, past_key_value, output_attentions))
-        out[0] = F.layer_norm(initial_hidden_state + out[0], (self.config.hidden_size,))
+        out = self.layer(hidden_states, attention_mask, head_mask, encoder_hidden_states,
+                              encoder_attention_mask, past_key_value, output_attentions)
+        # save the layer outputs, to return everything that's not the hidden_state
+        self.layer_outputs = out
 
-        return tuple(out)
+        return F.layer_norm(initial_hidden_state + out[0], (self.config.hidden_size,))
 
     def forward(
             self,
@@ -95,11 +110,10 @@ class DEQRobertaLayer(nn.Module):
     ) -> Tuple[torch.Tensor]:
         # output of robertalayer that we want is wrapped in tuple since extra elements are provided if is_decoder=True
         f = lambda x: self.residual_forward(x, hidden_states, attention_mask, head_mask, encoder_hidden_states,
-                                            encoder_attention_mask, past_key_value, output_attentions)[0]
+                                            encoder_attention_mask, past_key_value, output_attentions)
 
-        # initial estimate of fixed_point. Will heavily influence the output.
+        # initial estimate of fixed_point.
         z0 = torch.zeros_like(hidden_states, device=hidden_states.device)
-        print(z0.device)
 
         # Forward pass
         with torch.no_grad():
@@ -109,8 +123,12 @@ class DEQRobertaLayer(nn.Module):
             new_z_star = z_star
 
         # (Prepare for) Backward pass
+        jac_loss = None
         if self.training:
             new_z_star = f(z_star.requires_grad_())
+
+            # jacobian regularisation
+            jac_loss = jac_loss_estimate(new_z_star, z_star, vecs=1)
 
             def backward_hook(grad):
                 if self.hook is not None:
@@ -125,7 +143,7 @@ class DEQRobertaLayer(nn.Module):
 
             self.hook = new_z_star.register_hook(backward_hook)
 
-        return (new_z_star,)
+        return new_z_star, *self.layer_outputs[1:], jac_loss.view(-1, 1)
 
     def feed_forward_chunk(self, attention_output):
         intermediate_output = self.intermediate(attention_output)
@@ -1064,6 +1082,7 @@ class RobertaForCausalLM(RobertaPreTrainedModel):
         return reordered_past
 
 
+# DEQ Override: added in jac_loss for jacobian regularisation
 @add_start_docstrings("""RoBERTa Model with a `language modeling` head on top.""", ROBERTA_START_DOCSTRING)
 class RobertaForMaskedLM(RobertaPreTrainedModel):
     _keys_to_ignore_on_save = [r"lm_head.decoder.weight", r"lm_head.decoder.bias"]
@@ -1081,6 +1100,10 @@ class RobertaForMaskedLM(RobertaPreTrainedModel):
 
         self.roberta = RobertaModel(config, add_pooling_layer=False)
         self.lm_head = RobertaLMHead(config)
+
+        # jac_loss
+        self.jac_loss_freq = config.jac_loss_freq
+        self.jac_loss_weight = config.jac_loss_weight
 
         # The LM head weights require special treatment only when they are tied with the word embeddings
         self.update_keys_to_ignore(config, ["lm_head.decoder.weight"])
@@ -1129,6 +1152,7 @@ class RobertaForMaskedLM(RobertaPreTrainedModel):
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
+        # TODO: add in jac_loss
         outputs = self.roberta(
             input_ids,
             attention_mask=attention_mask,
@@ -1143,12 +1167,18 @@ class RobertaForMaskedLM(RobertaPreTrainedModel):
             return_dict=return_dict,
         )
         sequence_output = outputs[0]
+        jac_loss = outputs[-1]
         prediction_scores = self.lm_head(sequence_output)
 
         masked_lm_loss = None
         if labels is not None:
             loss_fct = CrossEntropyLoss()
             masked_lm_loss = loss_fct(prediction_scores.view(-1, self.config.vocab_size), labels.view(-1))
+
+            # jac_loss calculations
+            jac_loss = jac_loss.float().mean().type_as(masked_lm_loss)
+            if np.random.uniform(0, 1) < self.jac_loss_freq:
+                masked_lm_loss += jac_loss * self.jac_loss_weight
 
         if not return_dict:
             output = (prediction_scores,) + outputs[2:]

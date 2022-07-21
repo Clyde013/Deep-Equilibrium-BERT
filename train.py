@@ -32,6 +32,7 @@ training_args = TrainingArguments(
     save_steps=10_000,
     save_total_limit=2,
     prediction_loss_only=True,
+    logging_steps=100,
     report_to="wandb"
 )
 
