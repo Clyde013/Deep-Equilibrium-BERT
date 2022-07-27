@@ -1,7 +1,8 @@
 import pytorch_lightning as pl
 from TrainDatasets import oscar
 
-from transformers import RobertaTokenizer, RobertaConfig, DataCollatorForLanguageModeling
+from transformers import RobertaTokenizer, DataCollatorForLanguageModeling
+from BertDEQ.configuration_bertdeq import BertDEQConfig
 from transformers import Trainer, TrainingArguments
 from BertDEQ.bertdeq import RobertaForMaskedLM
 
@@ -10,7 +11,7 @@ import wandb
 wandb.init(project="bertdeq",
            name="bertdeq-test-run")
 
-config = RobertaConfig.from_pretrained("roberta-base")
+config = BertDEQConfig.from_pretrained("roberta-base")
 config.is_decoder = False
 tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
@@ -33,7 +34,7 @@ training_args = TrainingArguments(
     save_total_limit=2,
     prediction_loss_only=True,
     logging_steps=100,
-    report_to="wandb"
+#    report_to="wandb"
 )
 
 trainer = Trainer(

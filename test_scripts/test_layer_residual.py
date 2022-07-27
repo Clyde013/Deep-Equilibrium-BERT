@@ -8,16 +8,16 @@ Weights have to be initialised closer to 0 manually as the initialisation overri
 to RobertaPreTrainedModel.
 """
 
-from solvers import broyden, anderson
+from BertDEQ.solvers import broyden, anderson
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 
-from transformers.models.roberta.configuration_roberta import RobertaConfig
 from transformers import RobertaTokenizer
 
 from BertDEQ.bertdeq import DEQRobertaLayer
+from BertDEQ.configuration_bertdeq import BertDEQConfig
 
 import matplotlib.pyplot as plt
 
@@ -41,7 +41,7 @@ print(torch.cuda.is_available())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
-config = RobertaConfig(is_decoder=False, training=False)
+config = BertDEQConfig(is_decoder=False, training=False)
 
 layer = DEQRobertaLayer(config)
 layer = layer.apply(init_weights)

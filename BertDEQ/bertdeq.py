@@ -29,7 +29,9 @@ from transformers.utils import (
     logging,
     replace_return_docstrings,
 )
-from transformers.models.roberta.configuration_roberta import RobertaConfig
+
+# TODO: Refactor this scummy hack
+from BertDEQ.configuration_bertdeq import BertDEQConfig as RobertaConfig
 
 from BertDEQ.solvers import broyden, anderson
 from BertDEQ.jacobian import jac_loss_estimate
@@ -53,7 +55,7 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
 ]
 
 
-# DEQ Override: RobertaLayer changed specifically for DEQ
+# DEQ Override: DEQ block is a single RobertaLayer with residual input injection
 class DEQRobertaLayer(nn.Module):
     # the extra parameters might need to be propagated forward, beyond the iterative solvers
     layer_outputs = None
@@ -92,7 +94,7 @@ class DEQRobertaLayer(nn.Module):
                          output_attentions: Optional[bool] = False
                          ):
         out = self.layer(hidden_states, attention_mask, head_mask, encoder_hidden_states,
-                              encoder_attention_mask, past_key_value, output_attentions)
+                         encoder_attention_mask, past_key_value, output_attentions)
         # save the layer outputs, to return everything that's not the hidden_state
         self.layer_outputs = out
 
@@ -144,11 +146,6 @@ class DEQRobertaLayer(nn.Module):
             self.hook = new_z_star.register_hook(backward_hook)
 
         return new_z_star, *self.layer_outputs[1:], jac_loss.view(-1, 1)
-
-    def feed_forward_chunk(self, attention_output):
-        intermediate_output = self.intermediate(attention_output)
-        layer_output = self.output(intermediate_output, attention_output)
-        return layer_output
 
 
 class RobertaEmbeddings(nn.Module):
@@ -549,7 +546,7 @@ class RobertaLayer(nn.Module):
         return layer_output
 
 
-# DEQ Override
+# DEQ Override replacing stack of layers with single DEQ layer
 class RobertaEncoder(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -1152,7 +1149,6 @@ class RobertaForMaskedLM(RobertaPreTrainedModel):
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        # TODO: add in jac_loss
         outputs = self.roberta(
             input_ids,
             attention_mask=attention_mask,
