@@ -2,20 +2,20 @@ import pytorch_lightning as pl
 from TrainDatasets import oscar
 
 from transformers import RobertaTokenizer, DataCollatorForLanguageModeling
-from BertDEQ.configuration_bertdeq import BertDEQConfig
+from DEQBert.configuration_bertdeq import BertDEQConfig
 from transformers import Trainer, TrainingArguments
-from BertDEQ.bertdeq import RobertaForMaskedLM
+from DEQBert.DEQBert import DEQBertForMaskedLM
 
 import wandb
 
-wandb.init(project="bertdeq",
-           name="bertdeq-test-run")
+wandb.init(project="DEQBert",
+           name="test-run")
 
 config = BertDEQConfig.from_pretrained("roberta-base")
 config.is_decoder = False
 tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
-model = RobertaForMaskedLM(config=config)
+model = DEQBertForMaskedLM(config=config)
 
 oscar_datamodule = oscar.OSCARDataModule(tokenizer)
 oscar_datamodule.setup()

@@ -1,13 +1,14 @@
 # implicit-bert
 
-## bert-deq
+## DEQbert
 
 Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementation. Github [here](https://github.com/locuslab/deq). Can probably reference the [Julia blogpost](https://julialang.org/blog/2021/10/DEQ/) for theoretical understanding, then implement with torchdyn library.
 
 It seems like the residual connection in the roberta model is in [RobertaSelfOutput](https://github.com/huggingface/transformers/blob/v4.19.2/src/transformers/models/roberta/modeling_roberta.py#L286). Might have to subclass and rewrite everything up until RobertaLayer to accept the residual inputs from solver.
 
 # TODO
-- [ ] Refactor bertdeq so that its not just reskinned roberta
+- [x] Refactor bertdeq so that its not just reskinned roberta
+- [ ] Combine DEQBertBlock and DEQBertLayer into a single class to remove inefficiency
 - [ ] train the thing to completion
 
 ## _MEH_ URGENCY

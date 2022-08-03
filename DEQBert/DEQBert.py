@@ -24,10 +24,10 @@ from transformers.utils import (
     logging,
 )
 
-from BertDEQ.configuration_bertdeq import BertDEQConfig
+from DEQBert.configuration_bertdeq import BertDEQConfig
 
-from BertDEQ.solvers import broyden, anderson
-from BertDEQ.jacobian import jac_loss_estimate
+from DEQBert.solvers import broyden, anderson
+from DEQBert.jacobian import jac_loss_estimate
 
 import numpy as np
 
@@ -49,7 +49,7 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST = [
 
 
 # DEQ Override: DEQ block is a single RobertaLayer with residual input injection
-class DEQRobertaLayer(nn.Module):
+class DEQBertBlock(nn.Module):
     # the extra parameters might need to be propagated forward, beyond the iterative solvers
     layer_outputs = None
 
@@ -57,7 +57,7 @@ class DEQRobertaLayer(nn.Module):
         super().__init__()
 
         self.config = config
-        self.layer = RobertaLayer(config)
+        self.layer = DEQBertLayer(config)
         self.hook = None
 
         if self.config.f_solver == "anderson":
@@ -141,7 +141,7 @@ class DEQRobertaLayer(nn.Module):
         return new_z_star, *self.layer_outputs[1:], jac_loss.view(-1, 1)
 
 
-class RobertaEmbeddings(nn.Module):
+class DEQBertEmbeddings(nn.Module):
     """
     Same as BertEmbeddings with a tiny tweak for positional embeddings indexing.
     """
@@ -229,8 +229,8 @@ class RobertaEmbeddings(nn.Module):
         return position_ids.unsqueeze(0).expand(input_shape)
 
 
-# Copied from transformers.models.bert.modeling_bert.BertSelfAttention with Bert->Roberta
-class RobertaSelfAttention(nn.Module):
+# Copied from transformers.models.bert.modeling_bert.RobertaSelfAttention with Roberta->DEQBert
+class DEQBertSelfAttention(nn.Module):
     def __init__(self, config, position_embedding_type=None):
         super().__init__()
         if config.hidden_size % config.num_attention_heads != 0 and not hasattr(config, "embedding_size"):
@@ -357,8 +357,8 @@ class RobertaSelfAttention(nn.Module):
         return outputs
 
 
-# Copied from transformers.models.bert.modeling_bert.BertSelfOutput
-class RobertaSelfOutput(nn.Module):
+# Copied from transformers.models.bert.modeling_bert.RobertaSelfOutput
+class DEQBertSelfOutput(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
@@ -372,12 +372,12 @@ class RobertaSelfOutput(nn.Module):
         return hidden_states
 
 
-# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->Roberta
-class RobertaAttention(nn.Module):
+# Copied from transformers.models.bert.modeling_bert.RobertaAttention with Roberta->DEQBert
+class DEQBertAttention(nn.Module):
     def __init__(self, config, position_embedding_type=None):
         super().__init__()
-        self.self = RobertaSelfAttention(config, position_embedding_type=position_embedding_type)
-        self.output = RobertaSelfOutput(config)
+        self.self = DEQBertSelfAttention(config, position_embedding_type=position_embedding_type)
+        self.output = DEQBertSelfOutput(config)
         self.pruned_heads = set()
 
     def prune_heads(self, heads):
@@ -422,8 +422,8 @@ class RobertaAttention(nn.Module):
         return outputs
 
 
-# Copied from transformers.models.bert.modeling_bert.BertIntermediate
-class RobertaIntermediate(nn.Module):
+# Copied from transformers.models.bert.modeling_bert.RobertaIntermediate
+class DEQBertIntermediate(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.intermediate_size)
@@ -438,8 +438,8 @@ class RobertaIntermediate(nn.Module):
         return hidden_states
 
 
-# Copied from transformers.models.bert.modeling_bert.BertOutput
-class RobertaOutput(nn.Module):
+# Copied from transformers.models.bert.modeling_bert.RobertaOutput
+class DEQBertOutput(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.intermediate_size, config.hidden_size)
@@ -453,21 +453,21 @@ class RobertaOutput(nn.Module):
         return hidden_states
 
 
-# Copied from transformers.models.bert.modeling_bert.BertLayer with Bert->Roberta
-class RobertaLayer(nn.Module):
+# Copied from transformers.models.bert.modeling_bert.RobertaLayer with Roberta->DEQBert
+class DEQBertLayer(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.chunk_size_feed_forward = config.chunk_size_feed_forward
         self.seq_len_dim = 1
-        self.attention = RobertaAttention(config)
+        self.attention = DEQBertAttention(config)
         self.is_decoder = config.is_decoder
         self.add_cross_attention = config.add_cross_attention
         if self.add_cross_attention:
             if not self.is_decoder:
                 raise ValueError(f"{self} should be used as a decoder model if cross attention is added")
-            self.crossattention = RobertaAttention(config, position_embedding_type="absolute")
-        self.intermediate = RobertaIntermediate(config)
-        self.output = RobertaOutput(config)
+            self.crossattention = DEQBertAttention(config, position_embedding_type="absolute")
+        self.intermediate = DEQBertIntermediate(config)
+        self.output = DEQBertOutput(config)
 
     def forward(
             self,
@@ -540,11 +540,11 @@ class RobertaLayer(nn.Module):
 
 
 # DEQ Override replacing stack of layers with single DEQ layer
-class RobertaEncoder(nn.Module):
+class DEQBertEncoder(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.layer = DEQRobertaLayer(config)
+        self.layer = DEQBertBlock(config)
         self.gradient_checkpointing = False
 
     def forward(
@@ -639,8 +639,8 @@ class RobertaEncoder(nn.Module):
         )
 
 
-# Copied from transformers.models.bert.modeling_bert.BertPooler
-class RobertaPooler(nn.Module):
+# Copied from transformers.models.bert.modeling_bert.RobertaPooler
+class DEQBertPooler(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
@@ -655,7 +655,7 @@ class RobertaPooler(nn.Module):
         return pooled_output
 
 
-class RobertaPreTrainedModel(PreTrainedModel):
+class DEQBertPreTrainedModel(PreTrainedModel):
     """
     An abstract class to handle weights initialization and a simple interface for downloading and loading pretrained
     models.
@@ -679,7 +679,7 @@ class RobertaPreTrainedModel(PreTrainedModel):
             module.bias.data.zero_()
 
     def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, RobertaEncoder):
+        if isinstance(module, DEQBertEncoder):
             module.gradient_checkpointing = value
 
     def update_keys_to_ignore(self, config, del_keys_to_ignore):
@@ -750,7 +750,7 @@ ROBERTA_INPUTS_DOCSTRING = r"""
     "The bare RoBERTa Model transformer outputting raw hidden-states without any specific head on top.",
     ROBERTA_START_DOCSTRING,
 )
-class RobertaModel(RobertaPreTrainedModel):
+class DEQBertModel(DEQBertPreTrainedModel):
     """
     The model can behave as an encoder (with only self-attention) as well as a decoder, in which case a layer of
     cross-attention is added between the self-attention layers, following the architecture described in *Attention is
@@ -769,10 +769,10 @@ class RobertaModel(RobertaPreTrainedModel):
         super().__init__(config)
         self.config = config
 
-        self.embeddings = RobertaEmbeddings(config)
-        self.encoder = RobertaEncoder(config)
+        self.embeddings = DEQBertEmbeddings(config)
+        self.encoder = DEQBertEncoder(config)
 
-        self.pooler = RobertaPooler(config) if add_pooling_layer else None
+        self.pooler = DEQBertPooler(config) if add_pooling_layer else None
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -929,7 +929,7 @@ class RobertaModel(RobertaPreTrainedModel):
 
 # DEQ Override: added in jac_loss for jacobian regularisation
 @add_start_docstrings("""RoBERTa Model with a `language modeling` head on top.""", ROBERTA_START_DOCSTRING)
-class RobertaForMaskedLM(RobertaPreTrainedModel):
+class DEQBertForMaskedLM(DEQBertPreTrainedModel):
     _keys_to_ignore_on_save = [r"lm_head.decoder.weight", r"lm_head.decoder.bias"]
     _keys_to_ignore_on_load_missing = [r"position_ids", r"lm_head.decoder.weight", r"lm_head.decoder.bias"]
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
@@ -943,8 +943,8 @@ class RobertaForMaskedLM(RobertaPreTrainedModel):
                 "bi-directional self-attention."
             )
 
-        self.roberta = RobertaModel(config, add_pooling_layer=False)
-        self.lm_head = RobertaLMHead(config)
+        self.roberta = DEQBertModel(config, add_pooling_layer=False)
+        self.lm_head = DEQBertLMHead(config)
 
         # jac_loss
         self.jac_loss_freq = config.jac_loss_freq
@@ -1036,7 +1036,7 @@ class RobertaForMaskedLM(RobertaPreTrainedModel):
         )
 
 
-class RobertaLMHead(nn.Module):
+class DEQBertLMHead(nn.Module):
     """Roberta Head for masked language modeling."""
 
     def __init__(self, config):

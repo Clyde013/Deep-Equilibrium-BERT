@@ -1,2 +1,3 @@
 /models/runs/
 /wandb/
+/lightning_logs/
