@@ -5,8 +5,8 @@ class BertDEQConfig(RobertaConfig):
     model_type = "roberta"
 
     def __init__(self,
-                 f_solver = "anderson",
-                 b_solver = "broyden",
+                 f_solver="anderson",
+                 b_solver="broyden",
                  f_thres=100,
                  b_thres=100,
                  jac_loss_freq=0.35,
