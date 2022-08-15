@@ -102,6 +102,8 @@ class DEQBertLayer(nn.Module):
                          output_attentions: Optional[bool] = False
                          ):
 
+        #TODO: Reimplement input injection
+
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
         self_attention_outputs = self.attention(
@@ -339,6 +341,8 @@ class DEQBertSelfAttention(nn.Module):
             past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
             output_attentions: Optional[bool] = False,
     ) -> Tuple[torch.Tensor]:
+        #TODO: Input injection might have to be here?
+
         mixed_query_layer = self.query(hidden_states)
 
         # If this is instantiated as a cross-attention module, the keys

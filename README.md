@@ -7,8 +7,11 @@ Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementati
 It seems like the residual connection in the roberta model is in [RobertaSelfOutput](https://github.com/huggingface/transformers/blob/v4.19.2/src/transformers/models/roberta/modeling_roberta.py#L286). Might have to subclass and rewrite everything up until RobertaLayer to accept the residual inputs from solver.
 
 # TODO
-- [x] Refactor bertdeq so that its not just reskinned roberta
-- [ ] Combine DEQBertBlock and DEQBertLayer into a single class to remove inefficiency
+- [ ] Reimplement the input injection like [deq transformer](https://github.com/locuslab/deq/blob/1fb7059d6d89bb26d16da80ab9489dcc73fc5472/DEQ-Sequence/models/deq_transformer.py#L125).
+Refer to zotero notes on input injection. The forseeable issue is that original implementation made QKV matrices a
+Conv1D function, which means the QKV matrices are calculated first, and then split up into 3 chunks. For huggingface,
+they are treated as 3 individual linear layers, and are never split up into 3 chunks. Might end up having to split
+input injection into 3 QKV input injections with 3 linear layers. Pain in the ass.
 - [ ] train the thing to completion
 
 ## _MEH_ URGENCY
