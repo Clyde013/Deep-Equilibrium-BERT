@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 from TrainDatasets import oscar
 
 from transformers import RobertaTokenizer, DataCollatorForLanguageModeling
-from DEQBert.configuration_bertdeq import BertDEQConfig
+from DEQBert.configuration_bertdeq import DEQBertConfig
 from transformers import Trainer, TrainingArguments
 from DEQBert.DEQBert import DEQBertForMaskedLM
 
@@ -11,7 +11,7 @@ import wandb
 wandb.init(project="DEQBert",
            name="test-run")
 
-config = BertDEQConfig.from_pretrained("roberta-base")
+config = DEQBertConfig.from_pretrained("roberta-base")
 config.is_decoder = False
 tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 

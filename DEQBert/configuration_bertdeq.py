@@ -1,7 +1,7 @@
 from transformers.models.roberta.configuration_roberta import RobertaConfig
 
 
-class BertDEQConfig(RobertaConfig):
+class DEQBertConfig(RobertaConfig):
     model_type = "roberta"
 
     def __init__(self,

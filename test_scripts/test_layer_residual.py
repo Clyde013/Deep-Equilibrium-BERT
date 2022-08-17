@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 
 from DEQBert.DEQBert import DEQBertLayer
-from DEQBert.configuration_bertdeq import BertDEQConfig
+from DEQBert.configuration_bertdeq import DEQBertConfig
 
 import matplotlib.pyplot as plt
 
@@ -29,20 +29,18 @@ def init_weights(module):
     if isinstance(module, nn.Linear) and module.bias is not None:
         module.bias.data.zero_()
 
-
-print(torch.cuda.is_available())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
 
-config = BertDEQConfig(is_decoder=False, training=False)
+# remember to make hidden size a multiple of the number of attention heads (12)
+batch_size, seq_len, hidden_size = 3, 5, 24
+input_tensor = torch.randn((batch_size, seq_len, hidden_size)).to(device)
+print(f"Testing with tensor of {input_tensor.shape}")
+
+config = DEQBertConfig(is_decoder=False, training=False, hidden_size=hidden_size)
 
 layer = DEQBertLayer(config)
 layer = layer.apply(init_weights)
 layer.cuda(device)
-
-input_tensor = torch.randn((1, 3, 768)).to(device)
-
-print(input_tensor.device)
 
 out = layer(input_tensor)[0]
 

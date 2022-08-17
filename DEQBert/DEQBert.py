@@ -24,7 +24,7 @@ from transformers.utils import (
     logging,
 )
 
-from DEQBert.configuration_bertdeq import BertDEQConfig
+from DEQBert.configuration_bertdeq import DEQBertConfig
 
 from DEQBert.solvers import broyden, anderson
 from DEQBert.jacobian import jac_loss_estimate
@@ -83,31 +83,32 @@ class DEQBertLayer(nn.Module):
         self.b_thres = config.b_thres
         self.forward_out = None
         self.backward_out = None
-        # layer norm function for the residual connections
-        self.layer_norm = nn.LayerNorm(config.hidden_size)
+        # QKV input injections. Using a conv1d and then chunking into 3 is equivalent to running 3 linear layers
+        # Since our hidden states shape is [batch_size, seq_len, hidden_size] we have to transpose the input.
+        self.input_injection = nn.Conv1d(config.hidden_size, config.hidden_size*3, kernel_size=1)
 
     def feed_forward_chunk(self, attention_output):
         intermediate_output = self.intermediate(attention_output)
         layer_output = self.output(intermediate_output, attention_output)
         return layer_output
 
-    def residual_forward(self,
-                         hidden_states: torch.Tensor,
-                         initial_hidden_state: torch.Tensor,
-                         attention_mask: Optional[torch.FloatTensor] = None,
-                         head_mask: Optional[torch.FloatTensor] = None,
-                         encoder_hidden_states: Optional[torch.FloatTensor] = None,
-                         encoder_attention_mask: Optional[torch.FloatTensor] = None,
-                         past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
-                         output_attentions: Optional[bool] = False
-                         ):
-
-        #TODO: Reimplement input injection
-
+    # this forward pass is essentially the same as RobertaLayer's forward pass, except passing in input injection and
+    # caching the outputs
+    def _forward(self,
+                 hidden_states: torch.Tensor,
+                 input_injection: Tuple[torch.Tensor],
+                 attention_mask: Optional[torch.FloatTensor] = None,
+                 head_mask: Optional[torch.FloatTensor] = None,
+                 encoder_hidden_states: Optional[torch.FloatTensor] = None,
+                 encoder_attention_mask: Optional[torch.FloatTensor] = None,
+                 past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
+                 output_attentions: Optional[bool] = False
+                 ):
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
         self_attention_outputs = self.attention(
             hidden_states,
+            input_injection,
             attention_mask,
             head_mask,
             output_attentions=output_attentions,
@@ -158,9 +159,7 @@ class DEQBertLayer(nn.Module):
 
         # ensure the attentions after the hidden state are cached to be returned at the end of all the DEQ iterations
         self.cache_outputs = outputs
-
-        # residual connection
-        return self.layer_norm(initial_hidden_state + layer_output)
+        return layer_output
 
     def forward(
             self,
@@ -172,9 +171,13 @@ class DEQBertLayer(nn.Module):
             past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
             output_attentions: Optional[bool] = False,
     ) -> Tuple[torch.Tensor]:
-        # output of robertalayer that we want is wrapped in tuple since extra elements are provided if is_decoder=True
-        f = lambda x: self.residual_forward(x, hidden_states, attention_mask, head_mask, encoder_hidden_states,
-                                            encoder_attention_mask, past_key_value, output_attentions)
+        # save computation by pre-calculating input injection. Remember to transpose as conv1d is cringe.
+        # After transposing twice, the shape of the output tensor is [batch_size, seq_len, hidden_size*3].
+        # We then chunk dim=2 (the hidden states) into 3 QKV matrices.
+        input_injection = self.input_injection(hidden_states.transpose(1,2)).transpose(1,2)
+        input_injection = torch.chunk(input_injection, 3, dim=2)
+        f = lambda x: self._forward(x, input_injection, attention_mask, head_mask, encoder_hidden_states,
+                                    encoder_attention_mask, past_key_value, output_attentions)
 
         # initial estimate of fixed_point.
         z0 = torch.zeros_like(hidden_states, device=hidden_states.device)
@@ -298,7 +301,7 @@ class DEQBertEmbeddings(nn.Module):
         return position_ids.unsqueeze(0).expand(input_shape)
 
 
-# Copied from transformers.models.bert.modeling_bert.RobertaSelfAttention with Roberta->DEQBert
+# DEQ Override: QKV input injection
 class DEQBertSelfAttention(nn.Module):
     def __init__(self, config, position_embedding_type=None):
         super().__init__()
@@ -326,6 +329,11 @@ class DEQBertSelfAttention(nn.Module):
 
         self.is_decoder = config.is_decoder
 
+        # DEQ params
+        self.query_injection = nn.Linear(config.hidden_size, self.all_head_size)
+        self.key_injection = nn.Linear(config.hidden_size, self.all_head_size)
+        self.value_injection = nn.Linear(config.hidden_size, self.all_head_size)
+
     def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
         new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
         x = x.view(new_x_shape)
@@ -334,6 +342,7 @@ class DEQBertSelfAttention(nn.Module):
     def forward(
             self,
             hidden_states: torch.Tensor,
+            input_injection: Tuple[torch.Tensor],
             attention_mask: Optional[torch.FloatTensor] = None,
             head_mask: Optional[torch.FloatTensor] = None,
             encoder_hidden_states: Optional[torch.FloatTensor] = None,
@@ -341,9 +350,8 @@ class DEQBertSelfAttention(nn.Module):
             past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
             output_attentions: Optional[bool] = False,
     ) -> Tuple[torch.Tensor]:
-        #TODO: Input injection might have to be here?
-
-        mixed_query_layer = self.query(hidden_states)
+        # input injection: input_injection is tuple(Q,K,V) matrices
+        mixed_query_layer = self.query(hidden_states + input_injection[0])
 
         # If this is instantiated as a cross-attention module, the keys
         # and values come from an encoder; the attention mask needs to be
@@ -360,13 +368,13 @@ class DEQBertSelfAttention(nn.Module):
             value_layer = self.transpose_for_scores(self.value(encoder_hidden_states))
             attention_mask = encoder_attention_mask
         elif past_key_value is not None:
-            key_layer = self.transpose_for_scores(self.key(hidden_states))
-            value_layer = self.transpose_for_scores(self.value(hidden_states))
+            key_layer = self.transpose_for_scores(self.key(hidden_states + input_injection[1]))
+            value_layer = self.transpose_for_scores(self.value(hidden_states + input_injection[2]))
             key_layer = torch.cat([past_key_value[0], key_layer], dim=2)
             value_layer = torch.cat([past_key_value[1], value_layer], dim=2)
         else:
-            key_layer = self.transpose_for_scores(self.key(hidden_states))
-            value_layer = self.transpose_for_scores(self.value(hidden_states))
+            key_layer = self.transpose_for_scores(self.key(hidden_states + input_injection[1]))
+            value_layer = self.transpose_for_scores(self.value(hidden_states + input_injection[2]))
 
         query_layer = self.transpose_for_scores(mixed_query_layer)
 
@@ -472,6 +480,7 @@ class DEQBertAttention(nn.Module):
     def forward(
             self,
             hidden_states: torch.Tensor,
+            input_injection: Tuple[torch.Tensor],
             attention_mask: Optional[torch.FloatTensor] = None,
             head_mask: Optional[torch.FloatTensor] = None,
             encoder_hidden_states: Optional[torch.FloatTensor] = None,
@@ -481,6 +490,7 @@ class DEQBertAttention(nn.Module):
     ) -> Tuple[torch.Tensor]:
         self_outputs = self.self(
             hidden_states,
+            input_injection,
             attention_mask,
             head_mask,
             encoder_hidden_states,
@@ -593,8 +603,10 @@ class DEQBertEncoder(nn.Module):
             )
 
         hidden_states = layer_outputs[0]
+        # TODO: Fix returning jac loss out of model
+        jac_loss = layer_outputs[-1]
         if use_cache:
-            next_decoder_cache += (layer_outputs[-1],)
+            next_decoder_cache += (layer_outputs[-2],)
         if output_attentions:
             all_self_attentions = all_self_attentions + (layer_outputs[1],)
             if self.config.add_cross_attention:
@@ -646,7 +658,7 @@ class DEQBertPreTrainedModel(PreTrainedModel):
     models.
     """
 
-    config_class = BertDEQConfig
+    config_class = DEQBertConfig
     base_model_prefix = "roberta"
     supports_gradient_checkpointing = True
 
