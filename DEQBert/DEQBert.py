@@ -329,11 +329,6 @@ class DEQBertSelfAttention(nn.Module):
 
         self.is_decoder = config.is_decoder
 
-        # DEQ params
-        self.query_injection = nn.Linear(config.hidden_size, self.all_head_size)
-        self.key_injection = nn.Linear(config.hidden_size, self.all_head_size)
-        self.value_injection = nn.Linear(config.hidden_size, self.all_head_size)
-
     def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
         new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
         x = x.view(new_x_shape)
