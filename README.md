@@ -2,10 +2,10 @@
 
 ## DEQbert
 
-Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementation. Github [here](https://github.com/locuslab/deq). Can probably reference the [Julia blogpost](https://julialang.org/blog/2021/10/DEQ/) for theoretical understanding, then implement with torchdyn library.
+Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementation. GitHub [here](https://github.com/locuslab/deq). Can probably reference the [Julia blogpost](https://julialang.org/blog/2021/10/DEQ/) for theoretical understanding, then implement with torchdyn library.
 
 # TODO
-- [ ] Implement return of jac_loss from the model #TODO
+- [ ] neural DEQ solver? https://openreview.net/pdf?id=B0oHOwT5ENL
 - [ ] train the thing to completion
 
 ## _MEH_ URGENCY

@@ -1,8 +1,8 @@
 import torch
 from transformers import RobertaTokenizer
 
-from DEQBert.DEQBert import DEQBertForMaskedLM
-from DEQBert.configuration_bertdeq import DEQBertConfig
+from DEQBert.deqbert import DEQBertForMaskedLM
+from DEQBert.configuration_deqbert import DEQBertConfig
 
 
 config = DEQBertConfig.from_pretrained("roberta-base")

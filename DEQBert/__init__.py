@@ -1,1 +1,1 @@
-from . import DEQBert, jacobian, solvers, configuration_bertdeq
+from . import deqbert, jacobian, solvers, configuration_deqbert

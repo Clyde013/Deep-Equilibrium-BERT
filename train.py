@@ -2,9 +2,9 @@ import pytorch_lightning as pl
 from TrainDatasets import oscar
 
 from transformers import RobertaTokenizer, DataCollatorForLanguageModeling
-from DEQBert.configuration_bertdeq import DEQBertConfig
+from DEQBert.configuration_deqbert import DEQBertConfig
 from transformers import Trainer, TrainingArguments
-from DEQBert.DEQBert import DEQBertForMaskedLM
+from DEQBert.deqbert import DEQBertForMaskedLM
 
 import wandb
 

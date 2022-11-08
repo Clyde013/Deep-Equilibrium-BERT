@@ -10,11 +10,6 @@ import torch.autograd as autograd
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 from transformers.activations import ACT2FN, gelu
-from transformers.modeling_outputs import (
-    BaseModelOutputWithPastAndCrossAttentions,
-    BaseModelOutputWithPoolingAndCrossAttentions,
-    MaskedLMOutput,
-)
 from transformers.modeling_utils import PreTrainedModel
 from transformers.pytorch_utils import apply_chunking_to_forward, find_pruneable_heads_and_indices, prune_linear_layer
 from transformers.utils import (
@@ -24,7 +19,12 @@ from transformers.utils import (
     logging,
 )
 
-from DEQBert.configuration_bertdeq import DEQBertConfig
+from DEQBert.configuration_deqbert import DEQBertConfig
+from DEQBert.modelling_outputs_deqbert import (
+    DEQBertOutputWithPastAndCrossAttentions,
+    DEQBertOutputWithPoolingAndCrossAttentions,
+    DEQBertMaskedLMOutput,
+)
 
 from DEQBert.solvers import broyden, anderson
 from DEQBert.jacobian import jac_loss_estimate
@@ -549,7 +549,7 @@ class DEQBertEncoder(nn.Module):
             output_attentions: Optional[bool] = False,
             output_hidden_states: Optional[bool] = False,
             return_dict: Optional[bool] = True,
-    ) -> Union[Tuple[torch.Tensor], BaseModelOutputWithPastAndCrossAttentions]:
+    ) -> Union[Tuple[torch.Tensor], DEQBertOutputWithPastAndCrossAttentions]:
         all_hidden_states = () if output_hidden_states else None
         all_self_attentions = () if output_attentions else None
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
@@ -619,15 +619,17 @@ class DEQBertEncoder(nn.Module):
                     all_hidden_states,
                     all_self_attentions,
                     all_cross_attentions,
+                    jac_loss
                 ]
                 if v is not None
             )
-        return BaseModelOutputWithPastAndCrossAttentions(
+        return DEQBertOutputWithPastAndCrossAttentions(
             last_hidden_state=hidden_states,
             past_key_values=next_decoder_cache,
             hidden_states=all_hidden_states,
             attentions=all_self_attentions,
             cross_attentions=all_cross_attentions,
+            jac_loss=jac_loss
         )
 
 
@@ -787,7 +789,7 @@ class DEQBertModel(DEQBertPreTrainedModel):
     @add_code_sample_docstrings(
         processor_class=_TOKENIZER_FOR_DOC,
         checkpoint=_CHECKPOINT_FOR_DOC,
-        output_type=BaseModelOutputWithPoolingAndCrossAttentions,
+        output_type=DEQBertOutputWithPoolingAndCrossAttentions,
         config_class=_CONFIG_FOR_DOC,
     )
     # Copied from transformers.models.bert.modeling_bert.BertModel.forward
@@ -806,7 +808,7 @@ class DEQBertModel(DEQBertPreTrainedModel):
             output_attentions: Optional[bool] = None,
             output_hidden_states: Optional[bool] = None,
             return_dict: Optional[bool] = None,
-    ) -> Union[Tuple[torch.Tensor], BaseModelOutputWithPoolingAndCrossAttentions]:
+    ) -> Union[Tuple[torch.Tensor], DEQBertOutputWithPoolingAndCrossAttentions]:
         r"""
         encoder_hidden_states  (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`, *optional*):
             Sequence of hidden-states at the output of the last layer of the encoder. Used in the cross-attention if
@@ -909,13 +911,14 @@ class DEQBertModel(DEQBertPreTrainedModel):
         if not return_dict:
             return (sequence_output, pooled_output) + encoder_outputs[1:]
 
-        return BaseModelOutputWithPoolingAndCrossAttentions(
+        return DEQBertOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
             pooler_output=pooled_output,
             past_key_values=encoder_outputs.past_key_values,
             hidden_states=encoder_outputs.hidden_states,
             attentions=encoder_outputs.attentions,
             cross_attentions=encoder_outputs.cross_attentions,
+            jac_loss=encoder_outputs.jac_loss
         )
 
 
@@ -935,7 +938,7 @@ class DEQBertForMaskedLM(DEQBertPreTrainedModel):
                 "bi-directional self-attention."
             )
 
-        self.roberta = DEQBertModel(config, add_pooling_layer=False)
+        self.deqbert = DEQBertModel(config, add_pooling_layer=False)
         self.lm_head = DEQBertLMHead(config)
 
         # jac_loss
@@ -958,7 +961,7 @@ class DEQBertForMaskedLM(DEQBertPreTrainedModel):
     @add_code_sample_docstrings(
         processor_class=_TOKENIZER_FOR_DOC,
         checkpoint=_CHECKPOINT_FOR_DOC,
-        output_type=MaskedLMOutput,
+        output_type=DEQBertMaskedLMOutput,
         config_class=_CONFIG_FOR_DOC,
         mask="<mask>",
         expected_output="' Paris'",
@@ -978,7 +981,7 @@ class DEQBertForMaskedLM(DEQBertPreTrainedModel):
             output_attentions: Optional[bool] = None,
             output_hidden_states: Optional[bool] = None,
             return_dict: Optional[bool] = None,
-    ) -> Union[Tuple[torch.Tensor], MaskedLMOutput]:
+    ) -> Union[Tuple[torch.Tensor], DEQBertMaskedLMOutput]:
         r"""
         labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
             Labels for computing the masked language modeling loss. Indices should be in `[-100, 0, ...,
@@ -989,7 +992,7 @@ class DEQBertForMaskedLM(DEQBertPreTrainedModel):
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        outputs = self.roberta(
+        outputs = self.deqbert(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
@@ -1020,7 +1023,7 @@ class DEQBertForMaskedLM(DEQBertPreTrainedModel):
             output = (prediction_scores,) + outputs[2:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
 
-        return MaskedLMOutput(
+        return DEQBertMaskedLMOutput(
             loss=masked_lm_loss,
             logits=prediction_scores,
             hidden_states=outputs.hidden_states,

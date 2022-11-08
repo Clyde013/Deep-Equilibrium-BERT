@@ -11,8 +11,8 @@ to RobertaPreTrainedModel.
 import torch
 import torch.nn as nn
 
-from DEQBert.DEQBert import DEQBertLayer
-from DEQBert.configuration_bertdeq import DEQBertConfig
+from DEQBert.deqbert import DEQBertLayer
+from DEQBert.configuration_deqbert import DEQBertConfig
 
 import matplotlib.pyplot as plt
 

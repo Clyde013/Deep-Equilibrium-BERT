@@ -25,6 +25,7 @@ def jac_loss_estimate(f0, z0, vecs=2, create_graph=True):
         result += vJ.norm()**2
     return result / vecs / np.prod(z0.shape)
 
+
 def power_method(f0, z0, n_iters=200):
     """Estimating the spectral radius of J using power method
 
