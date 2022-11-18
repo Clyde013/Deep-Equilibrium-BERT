@@ -2,7 +2,7 @@ from transformers.models.roberta.configuration_roberta import RobertaConfig
 
 
 class DEQBertConfig(RobertaConfig):
-    model_type = "roberta"
+    model_type = "deqbert"
 
     def __init__(self,
                  f_solver="anderson",

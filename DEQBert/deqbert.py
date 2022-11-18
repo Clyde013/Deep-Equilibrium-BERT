@@ -598,7 +598,6 @@ class DEQBertEncoder(nn.Module):
             )
 
         hidden_states = layer_outputs[0]
-        # TODO: Fix returning jac loss out of model
         jac_loss = layer_outputs[-1]
         if use_cache:
             next_decoder_cache += (layer_outputs[-2],)
@@ -656,7 +655,7 @@ class DEQBertPreTrainedModel(PreTrainedModel):
     """
 
     config_class = DEQBertConfig
-    base_model_prefix = "roberta"
+    base_model_prefix = "deqbert"
     supports_gradient_checkpointing = True
 
     # DEQ override, change the weight initialisation scheme to make initial values smaller
@@ -1032,7 +1031,7 @@ class DEQBertForMaskedLM(DEQBertPreTrainedModel):
 
 
 class DEQBertLMHead(nn.Module):
-    """Roberta Head for masked language modeling."""
+    """DEQBert Head for masked language modeling."""
 
     def __init__(self, config):
         super().__init__()
