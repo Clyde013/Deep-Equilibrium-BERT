@@ -20,7 +20,7 @@ from transformers.utils import (
 )
 
 from DEQBert.configuration_deqbert import DEQBertConfig
-from DEQBert.modelling_outputs_deqbert import (
+from DEQBert.modeling_outputs_deqbert import (
     DEQBertOutputWithPastAndCrossAttentions,
     DEQBertOutputWithPoolingAndCrossAttentions,
     DEQBertMaskedLMOutput,

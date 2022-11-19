@@ -4,7 +4,7 @@ from TrainDatasets import oscar
 from transformers import RobertaTokenizer, DataCollatorForLanguageModeling
 from DEQBert.configuration_deqbert import DEQBertConfig
 from transformers import Trainer, TrainingArguments
-from DEQBert.deqbert import DEQBertForMaskedLM
+from DEQBert.modeling_deqbert import DEQBertForMaskedLM
 
 import wandb
 
