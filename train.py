@@ -31,12 +31,13 @@ data_collator = DataCollatorForLanguageModeling(
 training_args = TrainingArguments(
     output_dir="./models",
     overwrite_output_dir=True,
-    max_steps=10_000,
-    per_device_train_batch_size=2,
+    num_train_epochs=100,
+    per_device_train_batch_size=128,
     save_steps=10_000,
     save_total_limit=2,
     prediction_loss_only=True,
     logging_steps=100,
+    logging_strategy="steps",
     report_to="wandb"
 )
 
