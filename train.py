@@ -9,6 +9,7 @@ from DEQBert.modeling_deqbert import DEQBertForMaskedLM
 
 import wandb
 import torch
+from torch.utils.data import IterableDataset
 
 # To specify the GPU to use you have to set the CUDA_VISIBLE_DEVICES="0" environment variable
 wandb.init(project="DEQBert",
@@ -24,6 +25,11 @@ oscar_datamodule = oscar.OSCARDataModule(tokenizer)
 oscar_datamodule.setup()
 oscar_dataset = oscar_datamodule.dataset
 
+# The standard for doing comparing rained model performance is based
+# upon batch_size and total steps, not epochs.
+batch_size = 128
+total_steps = oscar_dataset.dataset_size // batch_size
+
 data_collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer, mlm=True, mlm_probability=0.15
 )
@@ -31,13 +37,12 @@ data_collator = DataCollatorForLanguageModeling(
 training_args = TrainingArguments(
     output_dir="./models",
     overwrite_output_dir=True,
-    num_train_epochs=100,
+    max_steps=total_steps,
     per_device_train_batch_size=128,
-    save_steps=10_000,
+    save_steps=100_000,
     save_total_limit=2,
     prediction_loss_only=True,
     logging_steps=100,
-    logging_strategy="steps",
     report_to="wandb"
 )
 
