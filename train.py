@@ -25,24 +25,19 @@ oscar_datamodule = oscar.OSCARDataModule(tokenizer)
 oscar_datamodule.setup()
 oscar_dataset = oscar_datamodule.dataset
 
-# The standard for doing comparing rained model performance is based
-# upon batch_size and total steps, not epochs.
-batch_size = 128
-total_steps = oscar_dataset.dataset_size // batch_size
-
 data_collator = DataCollatorForLanguageModeling(
-    tokenizer=tokenizer, mlm=True, mlm_probability=0.15
+    tokenizer=tokenizer, mlm=True, mlm_probability=wandb.config.mlm_probability
 )
 
 training_args = TrainingArguments(
-    output_dir="./models",
+    output_dir=wandb.config.output_dir,
     overwrite_output_dir=True,
-    max_steps=total_steps,
-    per_device_train_batch_size=128,
-    save_steps=100_000,
+    max_steps=wandb.config.total_steps,
+    per_device_train_batch_size=wandb.config.batch_size,
+    save_steps=wandb.config.save_steps,
     save_total_limit=2,
     prediction_loss_only=True,
-    logging_steps=100,
+    logging_steps=wandb.config.logging_steps,
     report_to="wandb"
 )
 

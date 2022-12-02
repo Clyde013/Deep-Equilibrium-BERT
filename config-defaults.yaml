@@ -1,0 +1,27 @@
+---
+    # we don't use epochs because training between models is only comparable with steps and batch size
+    # whereas epochs is dataset dependent
+    batch_size:
+        description: training batch size (per gpu device)
+        value: 128
+
+    total_steps:
+        description: number of training steps
+        value: 1.0e+6
+
+    save_steps:
+        description: intervals before model is saved
+        value: 1.0e+5
+
+    logging_steps:
+        description: intervals before wandb logging
+        value: 100
+
+    mlm_probability:
+        description: probability of mlm masking being applied to a train sequence token
+        value: 0.15
+
+    output_dir:
+        description: output directory for saved models
+        value: "./models"
+
