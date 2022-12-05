@@ -1,4 +1,8 @@
 ---
+    run_name:
+        description: wandb run name
+        value: 'test-run-1'
+
     # we don't use epochs because training between models is only comparable with steps and batch size
     # whereas epochs is dataset dependent
     batch_size:
@@ -23,5 +27,5 @@
 
     output_dir:
         description: output directory for saved models
-        value: "./models"
+        value: './models'
 

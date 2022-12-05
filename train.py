@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 from TrainDatasets import oscar
 
-from transformers import DataCollatorForLanguageModeling
+from transformers import DataCollatorForLanguageModeling 
 from DEQBert.tokenization_deqbert import DEQBertTokenizer
 from DEQBert.configuration_deqbert import DEQBertConfig
 from transformers import Trainer, TrainingArguments
@@ -12,8 +12,9 @@ import torch
 from torch.utils.data import IterableDataset
 
 # To specify the GPU to use you have to set the CUDA_VISIBLE_DEVICES="0" environment variable
-wandb.init(project="DEQBert",
-           name="test-run")
+wandb.init(project="DEQBert")
+wandb.run.name = wandb.config.run_name
+wandb.run.save()
 
 config = DEQBertConfig.from_pretrained("DEQBert/model_card/config.json")
 config.is_decoder = False
