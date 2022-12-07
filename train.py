@@ -35,6 +35,7 @@ training_args = TrainingArguments(
     overwrite_output_dir=True,
     max_steps=wandb.config.total_steps,
     per_device_train_batch_size=wandb.config.batch_size,
+    save_strategy="steps",
     save_steps=wandb.config.save_steps,
     save_total_limit=2,
     prediction_loss_only=True,

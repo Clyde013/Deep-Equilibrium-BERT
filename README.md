@@ -8,6 +8,7 @@ Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementati
 - [ ] neural DEQ solver? https://openreview.net/pdf?id=B0oHOwT5ENL
 - [ ] jacobian free backprop? https://arxiv.org/pdf/2103.12803.pdf
 - [ ] train the thing to completion
+- [ ] complete benchmarking programs
 
 ## _MEH_ URGENCY
 - [ ] THE PILE DATASET NOT WORKING
