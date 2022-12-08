@@ -143,3 +143,6 @@ wincertstore==0.2
 xxhash==3.0.0
 yarl==1.7.2
 zipp==3.8.0
+
+wandb~=0.12.21
+evaluate~=0.3.0
