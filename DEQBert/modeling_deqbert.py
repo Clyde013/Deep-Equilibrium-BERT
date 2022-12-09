@@ -210,8 +210,9 @@ class DEQBertLayer(nn.Module):
                 return new_grad
 
             self.hook = new_z_star.register_hook(backward_hook)
+            jac_loss = jac_loss.view(-1, 1)
 
-        return new_z_star, *self.cache_outputs, jac_loss.view(-1, 1)
+        return new_z_star, *self.cache_outputs, jac_loss
 
 
 class DEQBertEmbeddings(nn.Module):
