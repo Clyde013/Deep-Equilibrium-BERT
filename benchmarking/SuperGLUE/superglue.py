@@ -100,6 +100,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         eval_dataset=valid_dataset,
         data_collator=data_collator,
         tokenizer=tokenizer,
+        logging_steps=100,
         compute_metrics=compute_metrics,
     )
 
