@@ -59,8 +59,8 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         return tokenizer("[SEP]".join(s), truncation=True)
 
     # map across all splits of the dataset
-    train_dataset = dataset['train'].map(tokenize_function, batched=True).with_format('torch')
-    valid_dataset = dataset['validation'].map(tokenize_function, batched=True).with_format('torch')
+    train_dataset = dataset['train'].map(tokenize_function).with_format('torch')
+    valid_dataset = dataset['validation'].map(tokenize_function).with_format('torch')
 
     # create data collator to pad inputs
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
