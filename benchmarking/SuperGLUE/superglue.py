@@ -70,7 +70,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     deqbert = pretrained_model.deqbert
 
     # update the config with number of labels for sequence classification head
-    config.num_labels = dataset.features['label'].num_classes
+    config.num_labels = train_dataset.features['label'].num_classes
     # transplant the deqbert model with a sequence classification head
     model = DEQBertForSequenceClassification(config=config)
     model.deqbert = deqbert
