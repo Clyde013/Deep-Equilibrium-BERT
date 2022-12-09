@@ -46,7 +46,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
 
     # download the task splits, removing unneeded index column
-    dataset = datasets.load_dataset('super_glue', task).with_format("torch")
+    dataset = datasets.load_dataset('super_glue', task)
     dataset = dataset.remove_columns('idx')
 
     # tokenize function will concatenate the inputs together with [SEP] token before tokenizing it.
@@ -59,8 +59,8 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         return tokenizer("[SEP]".join(s), truncation=True)
 
     # map across all splits of the dataset
-    train_dataset = dataset['train'].map(tokenize_function, batched=True)
-    valid_dataset = dataset['validation'].map(tokenize_function, batched=True)
+    train_dataset = dataset['train'].map(tokenize_function, batched=True).with_format('torch')
+    valid_dataset = dataset['validation'].map(tokenize_function, batched=True).with_format('torch')
 
     # create data collator to pad inputs
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
@@ -112,14 +112,12 @@ if __name__ == "__main__":
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("model_path", help="path to model to evaluate")
-    parser.add_argument("config_path", action="store_const", const="DEQBert/model_card/config.json",
-                        help="path to model config")
+    parser.add_argument("config_path", help="path to model config")
     parser.add_argument("task", help=f"One of {task_metrics}")
-    parser.add_argument("epochs", help="Number of epochs to finetune pretrained model on train"
-                                       " dataset before benchmark task")
+    parser.add_argument("epochs", type=int,
+                        help="Number of epochs to finetune pretrained model on train dataset before benchmark task")
 
     args = parser.parse_args()
     args = vars(args)
 
     superglue_benchmark(args['task'], args['model_path'], args['config_path'], args['epochs'])
-    
