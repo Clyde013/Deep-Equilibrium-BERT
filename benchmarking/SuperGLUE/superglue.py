@@ -2,6 +2,7 @@
 This script will provide the functionality to fine tune passed in models on the SuperGLUE dataset and then
 evaluate their performance.
 """
+import argparse
 import numpy as np
 import datasets
 import wandb
@@ -17,7 +18,7 @@ from DEQBert.tokenization_deqbert import DEQBertTokenizer
 task_metrics = ["boolq", "cb", "copa", "multirc", "record", "rte", "wic", "wsc", "wsc.fixed", "axb", "axg"]
 
 
-def finetune(task, model_path, config_path, max_epochs):
+def superglue_benchmark(task, model_path, config_path, max_epochs):
     """
 
     Args:
@@ -27,7 +28,7 @@ def finetune(task, model_path, config_path, max_epochs):
         max_epochs: number of epochs to fine tune the model on
 
     Returns:
-
+        None. Everything, including the metric computed is logged in wandb.
     """
     if task not in task_metrics:
         raise Exception("nope, not a valid task name.")
@@ -106,3 +107,19 @@ def finetune(task, model_path, config_path, max_epochs):
     trainer.train()
 
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Benchmark script to evaluate pretrained DEQBert model on superGLUE",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("model_path", help="path to model to evaluate")
+    parser.add_argument("config_path", action="store_const", const="DEQBert/model_card/config.json",
+                        help="path to model config")
+    parser.add_argument("task", help=f"One of {task_metrics}")
+    parser.add_argument("epochs", help="Number of epochs to finetune pretrained model on train"
+                                       " dataset before benchmark task")
+
+    args = parser.parse_args()
+    args = vars(args)
+
+    superglue_benchmark(args['task'], args['model_path'], args['config_path'], args['epochs'])
+    
