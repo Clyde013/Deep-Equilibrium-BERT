@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from TrainDatasets import oscar
+from TrainDatasets import the_pile
 
 from transformers import DataCollatorForLanguageModeling 
 from DEQBert.tokenization_deqbert import DEQBertTokenizer
@@ -22,9 +22,9 @@ tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
 
 model = DEQBertForMaskedLM(config=config)
 
-oscar_datamodule = oscar.OSCARDataModule(tokenizer)
-oscar_datamodule.setup()
-oscar_dataset = oscar_datamodule.dataset
+pile_datamodule = the_pile.PileDataModule(tokenizer)
+pile_datamodule.setup()
+pile_dataset = pile_datamodule.dataset
 
 data_collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer, mlm=True, mlm_probability=wandb.config.mlm_probability
@@ -48,7 +48,7 @@ trainer = Trainer(
     model=model,
     args=training_args,
     data_collator=data_collator,
-    train_dataset=oscar_dataset,
+    train_dataset=pile_dataset,
 )
 
 trainer.train()
