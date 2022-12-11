@@ -37,9 +37,6 @@ class BookCorpusDataModule(LightningDataModule):
         # tokenize the dataset. scuffed af to manually remove denote the remove_columns but it works
         self.dataset = self.dataset.map(self.encode, batched=True, remove_columns=["text", "title"]).with_format("torch")
 
-        # fixes fsspec error https://discuss.huggingface.co/t/attributeerror-module-fsspec-has-no-attribute-asyn/19255/3
-        self.dataset = datasets.interleave_datasets([self.dataset])
-
     # since the dataset is a stream and masking is dynamic we can't exactly split it. train/val/test splits are
     # basically the same.
     def train_dataloader(self):
