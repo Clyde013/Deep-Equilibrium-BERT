@@ -3,6 +3,10 @@
         description: wandb run name
         value: 'test-run-1'
 
+    output_dir:
+        description: output directory for saved models
+        value: './models'
+
     # we don't use epochs because training between models is only comparable with steps and batch size
     # whereas epochs is dataset dependent
     batch_size:
@@ -11,21 +15,46 @@
 
     total_steps:
         description: number of training steps
-        value: 1.0e+6
+        value: 500.0e+3
 
     save_steps:
         description: intervals before model is saved
-        value: 1.0e+5
+        value: 10.0e+3
 
     logging_steps:
         description: intervals before wandb logging
-        value: 100
+        value: 50
 
     mlm_probability:
         description: probability of mlm masking being applied to a train sequence token
         value: 0.15
 
-    output_dir:
-        description: output directory for saved models
-        value: './models'
+    # optimization parameters
+    learning_rate:
+        description: The initial weight decay for the AdamW optimizer
+        value: 6.0e-4
+
+    lr_scheduler_type:
+        description: The scheduler type for the learning rate
+        value: 'linear'
+
+    warmup_steps:
+        description: Number of steps used for a linear warmup from 0 to learning_rate.
+        value: 24.0e+3
+
+    weight_decay:
+        description: The weight decay to apply (if not zero) to all layers except all bias and LayerNorm weights in AdamW optimizer.
+        value: 0.01
+
+    adam_beta1:
+        description: The beta1 hyperparameter for the AdamW optimizer
+        value: 0.9
+
+    adam_beta2:
+        description: The beta2 hyperparameter for the AdamW optimizer
+        value: 0.999
+
+    adam_epsilon:
+        description: The epsilon hyperparameter for the AdamW optimizer
+        value: 1.0e-6
 

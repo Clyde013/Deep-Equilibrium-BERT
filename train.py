@@ -40,6 +40,13 @@ training_args = TrainingArguments(
     save_total_limit=2,
     prediction_loss_only=True,
     logging_steps=wandb.config.logging_steps,
+    learning_rate=wandb.config.learning_rate,
+    weight_decay=wandb.config.weight_decay,
+    adam_beta1=wandb.config.adam_beta1,
+    adam_beta2=wandb.config.adam_beta2,
+    adam_epsilon=wandb.config.adam_epsilon,
+    lr_scheduler_type=wandb.config.lr_scheduler_type,
+    warmup_steps=wandb.config.warmup_steps,
     report_to="wandb"
 )
 
