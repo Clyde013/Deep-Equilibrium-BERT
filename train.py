@@ -18,6 +18,8 @@ wandb.run.save()
 
 config = DEQBertConfig.from_pretrained("DEQBert/model_card/config.json")
 config.is_decoder = False
+config.hidden_dropout_prob = wandb.config.hidden_dropout
+config.attention_probs_dropout_prob = wandb.config.attention_dropout
 tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
 
 model = DEQBertForMaskedLM(config=config)
@@ -30,6 +32,9 @@ data_collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer, mlm=True, mlm_probability=wandb.config.mlm_probability
 )
 
+# https://github.com/huggingface/transformers/issues/19041#issuecomment-1248056494
+# setting load_best_model_at_end=True and save_total_limit=1 will ensure 2 checkpoints are saved,
+# the latest checkpoint and the best checkpoint.
 training_args = TrainingArguments(
     output_dir=wandb.config.output_dir,
     overwrite_output_dir=True,
@@ -37,7 +42,8 @@ training_args = TrainingArguments(
     per_device_train_batch_size=wandb.config.batch_size,
     save_strategy="steps",
     save_steps=wandb.config.save_steps,
-    save_total_limit=2,
+    save_total_limit=1,
+    load_best_model_at_end=True,
     prediction_loss_only=True,
     logging_steps=wandb.config.logging_steps,
     learning_rate=wandb.config.learning_rate,

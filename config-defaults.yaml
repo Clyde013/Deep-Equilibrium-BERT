@@ -19,7 +19,7 @@
 
     save_steps:
         description: intervals before model is saved
-        value: 10.0e+3
+        value: 5.0e+3
 
     logging_steps:
         description: intervals before wandb logging
@@ -58,3 +58,10 @@
         description: The epsilon hyperparameter for the AdamW optimizer
         value: 1.0e-6
 
+    hidden_dropout:
+        description: Dropout for hidden layers
+        value: 0.1
+
+    attention_dropout:
+        description: Dropout for attention
+        value: 0.1
