@@ -40,6 +40,7 @@ training_args = TrainingArguments(
     overwrite_output_dir=True,
     max_steps=wandb.config.total_steps,
     per_device_train_batch_size=wandb.config.batch_size,
+    per_device_eval_batch_size=wandb.config.batch_size,
     evaluation_strategy="steps",
     eval_steps=wandb.config.save_steps,
     save_strategy="steps",
@@ -64,6 +65,7 @@ trainer = Trainer(
     args=training_args,
     data_collator=data_collator,
     train_dataset=pile_dataset,
+    compute_metrics=None
 )
 
 trainer.train()
