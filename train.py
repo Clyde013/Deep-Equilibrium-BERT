@@ -42,7 +42,7 @@ training_args = TrainingArguments(
     per_device_train_batch_size=wandb.config.batch_size,
     per_device_eval_batch_size=wandb.config.batch_size,
     evaluation_strategy="steps",
-    eval_steps=wandb.config.save_steps,
+    eval_steps=1,
     save_strategy="steps",
     save_steps=wandb.config.save_steps,
     save_total_limit=1,
@@ -65,6 +65,7 @@ trainer = Trainer(
     args=training_args,
     data_collator=data_collator,
     train_dataset=pile_dataset,
+    eval_dataset=pile_dataset,
     compute_metrics=None
 )
 
