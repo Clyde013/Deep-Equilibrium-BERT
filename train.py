@@ -40,7 +40,6 @@ training_args = TrainingArguments(
     save_strategy="steps",
     save_steps=wandb.config.save_steps,
     save_total_limit=5,
-    load_best_model_at_end=True,
     prediction_loss_only=True,
     logging_steps=wandb.config.logging_steps,
     learning_rate=wandb.config.learning_rate,
