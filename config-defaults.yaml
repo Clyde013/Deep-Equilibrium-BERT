@@ -32,7 +32,7 @@
     # optimization parameters
     learning_rate:
         description: The initial weight decay for the AdamW optimizer
-        value: 6.0e-4
+        value: 3.0e-4
 
     lr_scheduler_type:
         description: The scheduler type for the learning rate
