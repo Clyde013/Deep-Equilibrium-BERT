@@ -32,20 +32,14 @@ data_collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer, mlm=True, mlm_probability=wandb.config.mlm_probability
 )
 
-# https://github.com/huggingface/transformers/issues/19041#issuecomment-1248056494
-# setting load_best_model_at_end=True and save_total_limit=1 will ensure 2 checkpoints are saved,
-# the latest checkpoint and the best checkpoint.
 training_args = TrainingArguments(
     output_dir=wandb.config.output_dir,
     overwrite_output_dir=True,
     max_steps=wandb.config.total_steps,
     per_device_train_batch_size=wandb.config.batch_size,
-    per_device_eval_batch_size=wandb.config.batch_size,
-    evaluation_strategy="steps",
-    eval_steps=1,
     save_strategy="steps",
     save_steps=wandb.config.save_steps,
-    save_total_limit=1,
+    save_total_limit=5,
     load_best_model_at_end=True,
     prediction_loss_only=True,
     logging_steps=wandb.config.logging_steps,
@@ -65,8 +59,6 @@ trainer = Trainer(
     args=training_args,
     data_collator=data_collator,
     train_dataset=pile_dataset,
-    eval_dataset=pile_dataset,
-    compute_metrics=None
 )
 
 trainer.train()
