@@ -34,14 +34,6 @@
         description: The initial weight decay for the AdamW optimizer
         value: 3.0e-4
 
-    lr_scheduler_type:
-        description: The scheduler type for the learning rate
-        value: 'linear'
-
-    warmup_steps:
-        description: Number of steps used for a linear warmup from 0 to learning_rate.
-        value: 24.0e+3
-
     weight_decay:
         description: The weight decay to apply (if not zero) to all layers except all bias and LayerNorm weights in AdamW optimizer.
         value: 0.01
