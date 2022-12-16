@@ -55,9 +55,10 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         # each "i" is a column label
         for i in example:
             if i != 'label':
-                s.append(example[i])
-        sep_token = tokenizer.sep_token
-        return tokenizer(sep_token.join(s), truncation=True)
+                s.append(example[i].strip())
+        # have to end on SEP token, and each SEP token should have spacing between each sequence
+        string = f" {tokenizer.sep_token} ".join(s) + f" {tokenizer.sep_token}"
+        return tokenizer(string, truncation=True)
 
     # map across all splits of the dataset
     train_dataset = dataset['train'].map(tokenize_function).with_format('torch')
