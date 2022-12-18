@@ -266,10 +266,6 @@ def squad_benchmark(model_path, config_path, max_epochs):
     metric = load("squad")
 
     def compute_metrics(start_logits, end_logits, features, examples):
-        print(start_logits)
-        print(end_logits)
-        print(features)
-        print(examples)
         example_to_features = collections.defaultdict(list)
         for idx, feature in enumerate(features):
             example_to_features[feature["example_id"]].append(idx)
@@ -343,7 +339,7 @@ def squad_benchmark(model_path, config_path, max_epochs):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Benchmark script to evaluate pretrained DEQBert model on superGLUE",
+    parser = argparse.ArgumentParser(description="Benchmark script to evaluate pretrained DEQBert model on SQuAD",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("model_path", help="path to model to evaluate")
