@@ -9,7 +9,7 @@
 
     load_checkpoint:
         description: load the model from this checkpoint (use null if no checkpoint)
-        value: './models/lucas/checkpoint-60000'
+        value: './models/base/checkpoint-50000/'
 
     resume_steps:
         description: resuming training from checkpoint at this number of steps

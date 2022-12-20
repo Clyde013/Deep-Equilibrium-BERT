@@ -26,7 +26,7 @@ model = DEQBertForMaskedLM(config=config)
 if wandb.config.load_checkpoint is not None:
     # we load checkpoints from state_dicts directly instead of using trainer.save(resume_from_checkpoint=...)
     # because this allows us to alter scheduler hyperparameters when resuming training.
-    model = model.from_pretrained(f"{wandb.config.load_checkpoint}/pytorch_model.bin")
+    model = model.from_pretrained(wandb.config.load_checkpoint)
 
 pile_datamodule = the_pile.PileDataModule(tokenizer)
 pile_datamodule.setup()
@@ -42,7 +42,10 @@ optimizer = AdamW(model.parameters(),
                   eps=wandb.config.adam_epsilon,
                   weight_decay=wandb.config.weight_decay)
 scheduler = OneCycleLR(optimizer, max_lr=wandb.config.learning_rate, total_steps=int(wandb.config.total_steps),
-                       last_epoch=wandb.config.resume_steps)
+                       last_epoch=-1)
+# the scheduler has to initialise initial_lr for the optimizer, before we can set last_epoch. After the scheduler
+# steps once the learning rate will be set to as if it was at last_epoch.
+scheduler.last_epoch = wandb.config.resume_steps
 
 training_args = TrainingArguments(
     output_dir=wandb.config.output_dir,
@@ -54,8 +57,6 @@ training_args = TrainingArguments(
     save_total_limit=5,
     prediction_loss_only=True,
     logging_steps=wandb.config.logging_steps,
-    lr_scheduler_type=wandb.config.lr_scheduler_type,
-    warmup_steps=wandb.config.warmup_steps,
     report_to="wandb"
 )
 
