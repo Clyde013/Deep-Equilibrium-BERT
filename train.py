@@ -26,7 +26,7 @@ model = DEQBertForMaskedLM(config=config)
 if wandb.config.load_checkpoint is not None:
     # we load checkpoints from state_dicts directly instead of using trainer.save(resume_from_checkpoint=...)
     # because this allows us to alter scheduler hyperparameters when resuming training.
-    model = model.from_pretrained(torch.load(f"{wandb.config.load_checkpoint}/pytorch_model.bin"))
+    model = model.from_pretrained(f"{wandb.config.load_checkpoint}/pytorch_model.bin")
 
 pile_datamodule = the_pile.PileDataModule(tokenizer)
 pile_datamodule.setup()
