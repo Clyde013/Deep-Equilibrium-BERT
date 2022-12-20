@@ -23,9 +23,10 @@ config.attention_probs_dropout_prob = wandb.config.attention_dropout
 tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
 
 model = DEQBertForMaskedLM(config=config)
-# we load checkpoints from state_dicts directly instead of using trainer.save(resume_from_checkpoint=...)
-# because this allows us to alter scheduler hyperparameters when resuming training.
-model.load_state_dict(torch.load(f"{wandb.config.load_checkpoint}/pytorch_model.bin"))
+if wandb.config.load_checkpoint is not None:
+    # we load checkpoints from state_dicts directly instead of using trainer.save(resume_from_checkpoint=...)
+    # because this allows us to alter scheduler hyperparameters when resuming training.
+    model = model.from_pretrained(torch.load(f"{wandb.config.load_checkpoint}/pytorch_model.bin"))
 
 pile_datamodule = the_pile.PileDataModule(tokenizer)
 pile_datamodule.setup()
