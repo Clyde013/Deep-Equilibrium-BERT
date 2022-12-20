@@ -1,11 +1,19 @@
 ---
     run_name:
         description: wandb run name
-        value: 'test-run-1'
+        value: 'lucas-config-cont'
 
     output_dir:
         description: output directory for saved models
-        value: './models'
+        value: './models/lucas-cont/'
+
+    load_checkpoint:
+        description: load the model from this checkpoint
+        value: './models/lucas/checkpoint-60000'
+
+    resume_steps:
+        description: resuming training from checkpoint at this number of steps
+        value: 60000
 
     # we don't use epochs because training between models is only comparable with steps and batch size
     # whereas epochs is dataset dependent
@@ -32,7 +40,7 @@
     # optimization parameters
     learning_rate:
         description: The initial weight decay for the AdamW optimizer
-        value: 3.0e-4
+        value: 1.2e-4
 
     weight_decay:
         description: The weight decay to apply (if not zero) to all layers except all bias and LayerNorm weights in AdamW optimizer.

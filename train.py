@@ -1,6 +1,4 @@
-import pytorch_lightning as pl
 from TrainDatasets import the_pile
-
 from transformers import DataCollatorForLanguageModeling 
 from DEQBert.tokenization_deqbert import DEQBertTokenizer
 from DEQBert.configuration_deqbert import DEQBertConfig
@@ -25,6 +23,9 @@ config.attention_probs_dropout_prob = wandb.config.attention_dropout
 tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
 
 model = DEQBertForMaskedLM(config=config)
+# we load checkpoints from state_dicts directly instead of using trainer.save(resume_from_checkpoint=...)
+# because this allows us to alter scheduler hyperparameters when resuming training.
+model.load_state_dict(torch.load(f"{wandb.config.load_checkpoint}/pytorch_model.bin"))
 
 pile_datamodule = the_pile.PileDataModule(tokenizer)
 pile_datamodule.setup()
@@ -39,7 +40,8 @@ optimizer = AdamW(model.parameters(),
                   betas=(wandb.config.adam_beta1, wandb.config.adam_beta2),
                   eps=wandb.config.adam_epsilon,
                   weight_decay=wandb.config.weight_decay)
-scheduler = OneCycleLR(optimizer, max_lr=wandb.config.learning_rate, total_steps=int(wandb.config.total_steps))
+scheduler = OneCycleLR(optimizer, max_lr=wandb.config.learning_rate, total_steps=int(wandb.config.total_steps),
+                       last_epoch=wandb.config.resume_steps)
 
 training_args = TrainingArguments(
     output_dir=wandb.config.output_dir,
