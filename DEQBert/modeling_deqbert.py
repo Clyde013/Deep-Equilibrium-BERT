@@ -177,12 +177,11 @@ class DEQBertLayer(nn.Module):
         # We then chunk dim=2 (the hidden states) into 3 QKV matrices.
         input_injection = self.input_injection(hidden_states.transpose(1,2)).transpose(1,2)
         input_injection = torch.chunk(input_injection, 3, dim=2)
-        f = lambda x: self._forward(x, input_injection, attention_mask, head_mask, encoder_hidden_states,
-                                    encoder_attention_mask, past_key_value, output_attentions)
+        f = lambda x: self._forward(x.transpose(1,2), input_injection, attention_mask, head_mask, encoder_hidden_states,
+                                    encoder_attention_mask, past_key_value, output_attentions).transpose(1,2)
 
-        # initial estimate of fixed_point. hidden_states is [batch_size, seq_len, hidden_size].
-        # we need z0 to be [batch_size, hidden_size, seq_len]
-        z0 = torch.zeros_like(hidden_states, device=hidden_states.device).transpose(1, 2)
+        # initial estimate of fixed_point. hidden_states is [batch_size, seq_len, hidden_size]. z0 should be [batch_size, hidden_size, seq_len]
+        z0 = torch.zeros_like(hidden_states, device=hidden_states.device).transpose(1,2)
         print(f"z0/hidden_states shape: {z0.shape}")
 
         # Forward pass
