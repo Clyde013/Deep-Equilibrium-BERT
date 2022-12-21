@@ -214,7 +214,7 @@ class DEQBertLayer(nn.Module):
             self.hook = new_z_star.register_hook(backward_hook)
             jac_loss = jac_loss.view(-1, 1)
 
-        print(f"forward pass output shape: {new_z_star.transpose(1,2)}")
+        print(f"forward pass output shape: {new_z_star.transpose(1,2).shape}")
         return new_z_star.transpose(1,2), *self.cache_outputs, jac_loss
 
 
