@@ -2,9 +2,10 @@ from TrainDatasets import the_pile
 from transformers import DataCollatorForLanguageModeling 
 from DEQBert.tokenization_deqbert import DEQBertTokenizer
 from DEQBert.configuration_deqbert import DEQBertConfig
+from DEQBert.modeling_deqbert import DEQBertForMaskedLM
 from transformers import Trainer, TrainingArguments
 from transformers.optimization import AdamW
-from DEQBert.modeling_deqbert import DEQBertForMaskedLM
+
 
 import wandb
 import torch
@@ -49,7 +50,6 @@ scheduler.last_epoch = wandb.config.resume_steps
 
 training_args = TrainingArguments(
     output_dir=wandb.config.output_dir,
-    overwrite_output_dir=True,
     max_steps=wandb.config.total_steps,
     per_device_train_batch_size=wandb.config.batch_size,
     save_strategy="steps",

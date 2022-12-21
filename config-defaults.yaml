@@ -12,7 +12,7 @@
         value: './models/base/checkpoint-50000/'
 
     resume_steps:
-        description: resuming training from checkpoint at this number of steps
+        description: resuming training from checkpoint at this number of steps (if not resuming set to -1)
         value: 60000
 
     # we don't use epochs because training between models is only comparable with steps and batch size

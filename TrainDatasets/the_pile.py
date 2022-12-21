@@ -15,7 +15,7 @@ class PileDataModule(LightningDataModule):
             self,
             tokenizer: PreTrainedTokenizerBase,
             buffer_size: int = 10000,
-            max_seq_length: int = 128,
+            max_seq_length: int = 124,
             train_batch_size: int = 32,
             eval_batch_size: int = 32,
             **kwargs,

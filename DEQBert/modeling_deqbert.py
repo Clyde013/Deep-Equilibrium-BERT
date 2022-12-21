@@ -180,8 +180,10 @@ class DEQBertLayer(nn.Module):
         f = lambda x: self._forward(x, input_injection, attention_mask, head_mask, encoder_hidden_states,
                                     encoder_attention_mask, past_key_value, output_attentions)
 
-        # initial estimate of fixed_point.
-        z0 = torch.zeros_like(hidden_states, device=hidden_states.device)
+        # initial estimate of fixed_point. hidden_states is [batch_size, seq_len, hidden_size].
+        # we need z0 to be [batch_size, hidden_size, seq_len]
+        z0 = torch.zeros_like(hidden_states, device=hidden_states.device).transpose(1, 2)
+        print(f"z0/hidden_states shape: {z0.shape}")
 
         # Forward pass
         with torch.no_grad():
@@ -203,6 +205,7 @@ class DEQBertLayer(nn.Module):
                     self.hook.remove()
                     torch.cuda.synchronize()  # To avoid infinite recursion
                 # Compute the fixed point of yJ + grad, where J=J_f is the Jacobian of f at z_star
+                print(f"gradient shape (bsz, total_hsize, seq_len): {grad.shape}")
                 out = self.b_solver(lambda y: autograd.grad(new_z_star, z_star, y, retain_graph=True)[0] + grad,
                                     torch.zeros_like(grad), threshold=self.b_thres)
                 self.backward_out = out
