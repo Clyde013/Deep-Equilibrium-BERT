@@ -19,7 +19,12 @@
     # whereas epochs is dataset dependent
     batch_size:
         description: training batch size (per gpu device)
-        value: 128
+        value: 64
+
+    # effective batch size is batch_size * grad_accum_steps
+    grad_accum_steps:
+        descriptions: number of steps to accumulate gradient for before performing backward pass
+        value: 2
 
     total_steps:
         description: number of training steps
