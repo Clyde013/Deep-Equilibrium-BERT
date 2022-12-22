@@ -44,7 +44,7 @@
 
     # optimization parameters
     learning_rate:
-        description: The initial weight decay for the AdamW optimizer
+        description: The maximum learning rate for 1cycle scheduler
         value: 1.2e-4
 
     weight_decay:
