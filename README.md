@@ -9,8 +9,7 @@ Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementati
 - [ ] jacobian free backprop? https://arxiv.org/pdf/2103.12803.pdf
 - [ ] train the thing to completion
 - [ ] complete benchmarking programs
-- [ ] SQuAD benchmark copy huggingface tutorials. probably have to use QATrainer subclass. 
-- [ ] DEQBertForQA
+- [ ] Deepnorm implementation?
 
 ## _MEH_ URGENCY
 - [ ] THE PILE DATASET NOT WORKING
