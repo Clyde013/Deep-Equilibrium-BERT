@@ -36,7 +36,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         raise Exception("yeah no, axb and axg do not have train/valid split. we are supposed to first train the"
                         "model on the MultiNLI dataset, but I am lazy to do that at this stage.")
     if task == 'record':
-        raise Exception("record doesn't have labels, instead it's ")
+        raise Exception("record doesn't have labels, it's inconvenient to implement so I just won't")
 
     # initialise the configs
     config = DEQBertConfig.from_pretrained(config_path)
@@ -87,7 +87,8 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
 
     # training arguments
     training_args = TrainingArguments("superGLUE-benchmark",
-                                      logging_steps=100,
+                                      logging_steps=10,
+                                      per_device_train_batch_size=16,
                                       num_train_epochs=max_epochs,
                                       evaluation_strategy="epoch",
                                       report_to="wandb")
