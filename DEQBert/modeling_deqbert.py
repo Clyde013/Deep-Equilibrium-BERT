@@ -1076,6 +1076,10 @@ class DEQBertForSequenceClassification(DEQBertPreTrainedModel):
         self.deqbert = DEQBertModel(config, add_pooling_layer=False)
         self.classifier = DEQBertClassificationHead(config)
 
+        # jac_loss
+        self.jac_loss_freq = config.jac_loss_freq
+        self.jac_loss_weight = config.jac_loss_weight
+
         # Initialize weights and apply final processing
         self.post_init()
 
