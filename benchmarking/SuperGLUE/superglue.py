@@ -81,7 +81,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
 
     # training arguments
     training_args = TrainingArguments(output_dir="models/superGLUE-benchmark",
-                                      learning_rate=1.2e-4,
+                                      learning_rate=1e-5,
                                       logging_steps=10,
                                       per_device_train_batch_size=32,
                                       num_train_epochs=max_epochs,
