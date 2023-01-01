@@ -38,10 +38,6 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     if task == 'record':
         raise Exception("record doesn't have labels, it's inconvenient to implement so I just won't")
 
-    # initialise the configs
-    config = DEQBertConfig.from_pretrained(config_path)
-    config.is_decoder = False
-
     # create tokenizer
     tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
 
@@ -67,9 +63,13 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     # create data collator to pad inputs
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
+    # initialise the configs
+    config = DEQBertConfig.from_pretrained(config_path)
+    config.is_decoder = False
+    config.num_labels = train_dataset.features['label'].num_classes
+
     # transplant the deqbert model with a sequence classification head
-    model = DEQBertForSequenceClassification.from_pretrained(model_path,
-                                                             num_labels=train_dataset.features['label'].num_classes)
+    model = DEQBertForSequenceClassification.from_pretrained(model_path, config=config)
 
     # loads the relevant metric for super_glue tasks, documentation here:
     # (https://huggingface.co/spaces/evaluate-metric/super_glue/blob/main/super_glue.py#L39)

@@ -1121,6 +1121,7 @@ class DEQBertForSequenceClassification(DEQBertPreTrainedModel):
             return_dict=return_dict,
         )
         sequence_output = outputs[0]
+        jac_loss = outputs[-1]
         logits = self.classifier(sequence_output)
 
         loss = None
@@ -1145,6 +1146,11 @@ class DEQBertForSequenceClassification(DEQBertPreTrainedModel):
             elif self.config.problem_type == "multi_label_classification":
                 loss_fct = BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
+
+        # jac_loss calculations
+        jac_loss = jac_loss.float().mean().type_as(loss)
+        if np.random.uniform(0, 1) < self.jac_loss_freq:
+            loss += jac_loss * self.jac_loss_weight
 
         if not return_dict:
             output = (logits,) + outputs[2:]
