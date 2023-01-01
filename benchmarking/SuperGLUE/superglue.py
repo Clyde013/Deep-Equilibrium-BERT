@@ -67,15 +67,9 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     # create data collator to pad inputs
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    # extract the deqbert model without the MLM head
-    pretrained_model = DEQBertForMaskedLM.from_pretrained(model_path)
-    deqbert = pretrained_model.deqbert
-
-    # update the config with number of labels for sequence classification head
-    config.num_labels = train_dataset.features['label'].num_classes
     # transplant the deqbert model with a sequence classification head
-    model = DEQBertForSequenceClassification(config=config)
-    model.deqbert = deqbert
+    model = DEQBertForSequenceClassification.from_pretrained(model_path,
+                                                             num_labels=train_dataset.features['label'].num_classes)
 
     # loads the relevant metric for super_glue tasks, documentation here:
     # (https://huggingface.co/spaces/evaluate-metric/super_glue/blob/main/super_glue.py#L39)
@@ -86,7 +80,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         return metric.compute(predictions=predictions, references=labels)
 
     # training arguments
-    training_args = TrainingArguments("superGLUE-benchmark",
+    training_args = TrainingArguments(output_dir="models/superGLUE-benchmark",
                                       logging_steps=10,
                                       per_device_train_batch_size=16,
                                       num_train_epochs=max_epochs,
