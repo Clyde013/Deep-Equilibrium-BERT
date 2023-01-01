@@ -57,8 +57,8 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
             if i != 'label':
                 s.append(example[i].strip())
         # have to end on SEP token, and each SEP token should have spacing between each sequence
-        string = f" {tokenizer.sep_token} ".join(s) + f" {tokenizer.sep_token}"
-        return tokenizer(string, truncation=True)
+        string = f" {tokenizer.sep_token} ".join(s)
+        return tokenizer(string, padding="max_length", truncation=True)
 
     # map across all splits of the dataset
     train_dataset = dataset['train'].map(tokenize_function).with_format('torch')
@@ -83,7 +83,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     training_args = TrainingArguments(output_dir="models/superGLUE-benchmark",
                                       learning_rate=1.2e-4,
                                       logging_steps=10,
-                                      per_device_train_batch_size=16,
+                                      per_device_train_batch_size=32,
                                       num_train_epochs=max_epochs,
                                       evaluation_strategy="epoch",
                                       report_to="wandb")
