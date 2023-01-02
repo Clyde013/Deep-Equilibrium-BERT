@@ -9,6 +9,8 @@ import wandb
 from evaluate import load
 from transformers import DataCollatorWithPadding, TrainingArguments, Trainer
 
+from transformers import RobertaForSequenceClassification, RobertaConfig, RobertaTokenizer
+
 from DEQBert.modeling_deqbert import DEQBertForMaskedLM, DEQBertForSequenceClassification, DEQBertConfig
 from DEQBert.tokenization_deqbert import DEQBertTokenizer
 
@@ -39,7 +41,8 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         raise Exception("record doesn't have labels, it's inconvenient to implement so I just won't")
 
     # create tokenizer
-    tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
+    # tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
+    tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
     # download the task splits, removing unneeded index column
     dataset = datasets.load_dataset('super_glue', task)
@@ -64,12 +67,14 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
     # initialise the configs
-    config = DEQBertConfig.from_pretrained(config_path)
+    # config = DEQBertConfig.from_pretrained(config_path)
+    config = RobertaConfig.from_pretrained("roberta-base")
     config.is_decoder = False
     config.num_labels = train_dataset.features['label'].num_classes
 
     # transplant the deqbert model with a sequence classification head
-    model = DEQBertForSequenceClassification.from_pretrained(model_path, config=config)
+    # model = DEQBertForSequenceClassification.from_pretrained(model_path, config=config)
+    model = RobertaForSequenceClassification.from_pretrained("roberta-base", config=config)
 
     # loads the relevant metric for super_glue tasks, documentation here:
     # (https://huggingface.co/spaces/evaluate-metric/super_glue/blob/main/super_glue.py#L39)
@@ -80,7 +85,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         return metric.compute(predictions=predictions, references=labels)
 
     # training arguments
-    training_args = TrainingArguments(output_dir="models/superGLUE-benchmark",
+    training_args = TrainingArguments(output_dir="models/superGLUE-benchmark-roberta",
                                       learning_rate=1e-5,
                                       logging_steps=10,
                                       per_device_train_batch_size=32,
@@ -89,7 +94,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
                                       report_to="wandb")
 
     # initialise weights and biases logging
-    wandb.init(project="DEQBert-benchmarking", name=task)
+    wandb.init(project="DEQBert-benchmarking", name=task + "-roberta")
 
     # setup trainer
     trainer = Trainer(
