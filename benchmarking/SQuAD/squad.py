@@ -250,15 +250,10 @@ def squad_benchmark(model_path, config_path, max_epochs):
         remove_columns=dataset["validation"].column_names,
     )
 
-    # extract the deqbert model without the MLM head
-    pretrained_model = DEQBertForMaskedLM.from_pretrained(model_path)
-    deqbert = pretrained_model.deqbert
-
-    # update the config with number of labels for sequence classification head (should be 2)
+    # update the config with number of labels for question answering head (should be 2)
     config.num_labels = 2
     # transplant the deqbert model with a sequence classification head
-    model = DEQBertForQuestionAnswering(config=config)
-    model.deqbert = deqbert
+    model = DEQBertForQuestionAnswering.from_pretrained(model_path, config=config)
 
     # love copying code
     n_best = 20

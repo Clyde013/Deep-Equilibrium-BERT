@@ -5,6 +5,7 @@
 Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementation. GitHub [here](https://github.com/locuslab/deq). Can probably reference the [Julia blogpost](https://julialang.org/blog/2021/10/DEQ/) for theoretical understanding, then implement with torchdyn library.
 
 # TODO
+- [ ] Add wandb logging of NFEs
 - [ ] neural DEQ solver? https://openreview.net/pdf?id=B0oHOwT5ENL
 - [ ] jacobian free backprop? https://arxiv.org/pdf/2103.12803.pdf
 - [ ] train the thing to completion
