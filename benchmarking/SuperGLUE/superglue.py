@@ -53,7 +53,8 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         # each "i" is a column label
         for i in example:
             if i != 'label' and i != 'idx':
-                s.append(example[i].strip())
+                if isinstance(example[i], str):
+                    s.append(example[i].strip())
         # have to end on SEP token, and each SEP token should have spacing between each sequence
         string = f" {tokenizer.sep_token} ".join(s)
         return tokenizer(string, padding="max_length", truncation=True)
