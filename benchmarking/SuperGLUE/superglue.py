@@ -7,7 +7,7 @@ import numpy as np
 import datasets
 import wandb
 from evaluate import load
-from transformers import DataCollatorWithPadding, TrainingArguments, Trainer
+from transformers import DefaultDataCollator, TrainingArguments, Trainer
 
 from transformers import RobertaForSequenceClassification, RobertaConfig, RobertaTokenizer
 
@@ -58,12 +58,15 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         string = f" {tokenizer.sep_token} ".join(s)
         return tokenizer(string, padding="max_length", truncation=True)
 
-    # map across all splits of the dataset
-    train_dataset = dataset['train'].map(tokenize_function).with_format('torch')
-    valid_dataset = dataset['validation'].map(tokenize_function).with_format('torch')
+    # map across all splits of the dataset. flatten because for multirc 'idx' column are dictionaries, and datasets
+    # can't work with nested dictionary columns
+    train_dataset = dataset['train'].map(tokenize_function)\
+        .with_format('torch', columns=["label", "input_ids", "attention_mask"], output_all_columns=True).flatten()
+    valid_dataset = dataset['validation'].map(tokenize_function)\
+        .with_format('torch', columns=["label", "input_ids", "attention_mask"], output_all_columns=True).flatten()
 
     # create data collator to pad inputs
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    data_collator = DefaultDataCollator()
 
     # initialise the configs
     config = DEQBertConfig.from_pretrained(config_path)
@@ -96,7 +99,6 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
                                       num_train_epochs=max_epochs,
                                       eval_steps=1,
                                       evaluation_strategy="steps",
-                                      remove_unused_columns=False,
                                       include_inputs_for_metrics=True,
                                       report_to="wandb")
 
