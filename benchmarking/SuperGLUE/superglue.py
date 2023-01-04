@@ -65,7 +65,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     # can't work with nested dictionary columns
     train_dataset = dataset['train'].map(tokenize_function) \
         .with_format('torch', columns=["label", "input_ids", "attention_mask"], output_all_columns=True).flatten()
-    valid_dataset = dataset['validation'].select(range(30)).map(tokenize_function) \
+    valid_dataset = dataset['validation'].map(tokenize_function) \
         .with_format('torch', columns=["label", "input_ids", "attention_mask"], output_all_columns=True).flatten()
 
     # create data collator to pad inputs
@@ -96,7 +96,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
             super().__init__()
             self._trainer = trainer
 
-        def on_step_end(self, args, state, control, **kwargs):
+        def on_epoch_end(self, args, state, control, **kwargs):
             if control.should_evaluate:
                 control_copy = deepcopy(control)
                 logits, labels, metrics = self._trainer.predict(valid_dataset)
