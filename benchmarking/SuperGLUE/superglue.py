@@ -63,9 +63,9 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
 
     # map across all splits of the dataset. flatten because for multirc 'idx' column are dictionaries, and datasets
     # can't work with nested dictionary columns
-    train_dataset = dataset['train'].map(tokenize_function)\
+    train_dataset = dataset['train'].map(tokenize_function) \
         .with_format('torch', columns=["label", "input_ids", "attention_mask"], output_all_columns=True).flatten()
-    valid_dataset = dataset['validation'].map(tokenize_function)\
+    valid_dataset = dataset['validation'].map(tokenize_function) \
         .with_format('torch', columns=["label", "input_ids", "attention_mask"], output_all_columns=True).flatten()
 
     # create data collator to pad inputs
@@ -79,21 +79,16 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
 
     # transplant the deqbert model with a sequence classification head
     model = DEQBertForSequenceClassification.from_pretrained(model_path, config=config)
+
     # model = RobertaForSequenceClassification.from_pretrained("roberta-base", config=config)
 
     # loads the relevant metric for super_glue tasks, documentation here:
     # (https://huggingface.co/spaces/evaluate-metric/super_glue/blob/main/super_glue.py#L39)
     def compute_metrics(eval_preds):
         metric = load('super_glue', task)
-
-        if task == "multirc":
-            logits, labels, inputs = eval_preds
-            print(inputs)
-            return {}
-        else:
-            logits, labels, _ = eval_preds
-            predictions = np.argmax(logits, axis=-1)
-            return metric.compute(predictions=predictions, references=labels)
+        logits, labels, _ = eval_preds
+        predictions = np.argmax(logits, axis=-1)
+        return metric.compute(predictions=predictions, references=labels)
 
     # multirc on epoch end evaluation callback
     class CustomCallback(TrainerCallback):
@@ -104,11 +99,24 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         def on_step_end(self, args, state, control, **kwargs):
             if control.should_evaluate:
                 control_copy = deepcopy(control)
-                predictions, label_ids, metrics = self._trainer.predict(valid_dataset)
-                print("on epoch end:")
-                print(predictions)
-                print(label_ids)
-                print(metrics)
+                logits, labels, metrics = self._trainer.predict(valid_dataset)
+
+                para = valid_dataset['idx.paragraph']
+                quest = valid_dataset['idx.question']
+                ans = valid_dataset['idx.answer']
+
+                preds = np.argmax(logits, axis=-1)
+                predictions = []
+                for i in range(preds.size(0)):
+                    predictions.append(
+                        {'idx': {'answer': ans[i], 'paragraph': para[i], 'question': quest[i]}, 'prediction': preds[i]}
+                    )
+
+                metric = load('super_glue', task)
+                out = metric.compute(predictions=predictions, references=labels)
+                wandb.log(out)
+                print(out)
+
                 return control_copy
 
     # training arguments
@@ -126,15 +134,25 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     wandb.init(project="DEQBert-benchmarking", name=task)
 
     # setup trainer
-    trainer = Trainer(
-        model,
-        training_args,
-        train_dataset=train_dataset,
-        eval_dataset=valid_dataset,
-        data_collator=data_collator,
-        tokenizer=tokenizer,
-        compute_metrics=compute_metrics,
-    )
+    if task == "multirc":
+        trainer = Trainer(
+            model,
+            training_args,
+            train_dataset=train_dataset,
+            eval_dataset=valid_dataset,
+            data_collator=data_collator,
+            tokenizer=tokenizer,
+        )
+    else:
+        trainer = Trainer(
+            model,
+            training_args,
+            train_dataset=train_dataset,
+            eval_dataset=valid_dataset,
+            data_collator=data_collator,
+            tokenizer=tokenizer,
+            compute_metrics=compute_metrics,
+        )
 
     if task == "multirc":
         trainer.add_callback(CustomCallback(trainer))
