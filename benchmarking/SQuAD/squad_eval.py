@@ -115,7 +115,9 @@ def main(checkpoint):
 
     predictions, _, _ = trainer.predict(validation_dataset)
     start_logits, end_logits = predictions
-    compute_metrics(start_logits, end_logits, validation_dataset, raw_datasets["validation"])
+    metrics = compute_metrics(start_logits, end_logits, validation_dataset, raw_datasets["validation"])
+    print(metrics)
+    return metrics
 
 
 if __name__ == "__main__":
