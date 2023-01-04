@@ -44,9 +44,8 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     tokenizer = DEQBertTokenizer.from_pretrained("roberta-base")
     # tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
-    # download the task splits, removing unneeded index column
+    # download the task splits
     dataset = datasets.load_dataset('super_glue', task)
-    dataset = dataset.remove_columns('idx')
 
     # tokenize function will concatenate the inputs together with a separator token before tokenizing it.
     def tokenize_function(example):
@@ -80,8 +79,13 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
     # (https://huggingface.co/spaces/evaluate-metric/super_glue/blob/main/super_glue.py#L39)
     def compute_metrics(eval_preds):
         metric = load('super_glue', task)
-        logits, labels = eval_preds
-        predictions = np.argmax(logits, axis=-1)
+
+        if task == "multirc":
+            logits, labels, inputs = eval_preds
+            print(inputs)
+        else:
+            logits, labels, _ = eval_preds
+            predictions = np.argmax(logits, axis=-1)
         return metric.compute(predictions=predictions, references=labels)
 
     # training arguments
@@ -90,7 +94,10 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
                                       logging_steps=10,
                                       per_device_train_batch_size=32,
                                       num_train_epochs=max_epochs,
-                                      evaluation_strategy="epoch",
+                                      eval_steps=1,
+                                      evaluation_strategy="steps",
+                                      remove_unused_columns=False,
+                                      include_inputs_for_metrics=True,
                                       report_to="wandb")
 
     # initialise weights and biases logging
