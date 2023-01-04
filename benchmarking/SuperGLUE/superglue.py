@@ -89,7 +89,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         if task == "multirc":
             logits, labels, inputs = eval_preds
             print(inputs)
-            return None
+            return {}
         else:
             logits, labels, _ = eval_preds
             predictions = np.argmax(logits, axis=-1)
