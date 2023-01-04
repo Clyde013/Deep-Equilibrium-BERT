@@ -3,11 +3,13 @@ This script will provide the functionality to fine tune passed in models on the 
 evaluate their performance.
 """
 import argparse
+from copy import deepcopy
+
 import numpy as np
 import datasets
 import wandb
 from evaluate import load
-from transformers import DefaultDataCollator, TrainingArguments, Trainer
+from transformers import DefaultDataCollator, TrainingArguments, Trainer, TrainerCallback
 
 from transformers import RobertaForSequenceClassification, RobertaConfig, RobertaTokenizer
 
@@ -87,10 +89,27 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         if task == "multirc":
             logits, labels, inputs = eval_preds
             print(inputs)
+            return None
         else:
             logits, labels, _ = eval_preds
             predictions = np.argmax(logits, axis=-1)
-        return metric.compute(predictions=predictions, references=labels)
+            return metric.compute(predictions=predictions, references=labels)
+
+    # multirc on epoch end evaluation callback
+    class CustomCallback(TrainerCallback):
+        def __init__(self, trainer) -> None:
+            super().__init__()
+            self._trainer = trainer
+
+        def on_step_end(self, args, state, control, **kwargs):
+            if control.should_evaluate:
+                control_copy = deepcopy(control)
+                predictions, label_ids, metrics = self._trainer.predict(valid_dataset)
+                print("on epoch end:")
+                print(predictions)
+                print(label_ids)
+                print(metrics)
+                return control_copy
 
     # training arguments
     training_args = TrainingArguments(output_dir="models/superGLUE-benchmark",
@@ -116,6 +135,9 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
     )
+
+    if task == "multirc":
+        trainer.add_callback(CustomCallback(trainer))
 
     # fine tune the model, with metrics being evaluated at end of each epoch
     trainer.train()
