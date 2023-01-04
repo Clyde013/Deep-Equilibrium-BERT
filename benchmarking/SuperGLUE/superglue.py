@@ -119,31 +119,35 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
 
                 return control_copy
 
-    # training arguments
-    training_args = TrainingArguments(output_dir="models/superGLUE-benchmark",
-                                      learning_rate=5e-5,
-                                      logging_steps=10,
-                                      per_device_train_batch_size=32,
-                                      num_train_epochs=max_epochs,
-                                      eval_steps=1,
-                                      evaluation_strategy="steps",
-                                      include_inputs_for_metrics=True,
-                                      report_to="wandb")
-
     # initialise weights and biases logging
     wandb.init(project="DEQBert-benchmarking", name=task)
 
     # setup trainer
     if task == "multirc":
+        training_args = TrainingArguments(output_dir="models/superGLUE-benchmark",
+                                          learning_rate=5e-5,
+                                          logging_steps=10,
+                                          per_device_train_batch_size=32,
+                                          num_train_epochs=max_epochs,
+                                          include_inputs_for_metrics=True,
+                                          report_to="wandb")
         trainer = Trainer(
             model,
             training_args,
             train_dataset=train_dataset,
-            eval_dataset=valid_dataset,
             data_collator=data_collator,
             tokenizer=tokenizer,
         )
+        trainer.add_callback(CustomCallback(trainer))
     else:
+        training_args = TrainingArguments(output_dir="models/superGLUE-benchmark",
+                                          learning_rate=5e-5,
+                                          logging_steps=10,
+                                          per_device_train_batch_size=32,
+                                          num_train_epochs=max_epochs,
+                                          evaluation_strategy="epoch",
+                                          include_inputs_for_metrics=True,
+                                          report_to="wandb")
         trainer = Trainer(
             model,
             training_args,
@@ -153,9 +157,6 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
             tokenizer=tokenizer,
             compute_metrics=compute_metrics,
         )
-
-    if task == "multirc":
-        trainer.add_callback(CustomCallback(trainer))
 
     # fine tune the model, with metrics being evaluated at end of each epoch
     trainer.train()
