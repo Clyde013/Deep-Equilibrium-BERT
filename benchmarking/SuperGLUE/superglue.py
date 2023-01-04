@@ -107,7 +107,7 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
 
                 preds = np.argmax(logits, axis=-1)
                 predictions = []
-                for i in range(preds.size(0)):
+                for i in range(preds.size):
                     predictions.append(
                         {'idx': {'answer': ans[i], 'paragraph': para[i], 'question': quest[i]}, 'prediction': preds[i]}
                     )
