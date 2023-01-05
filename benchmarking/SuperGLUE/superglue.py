@@ -97,27 +97,26 @@ def superglue_benchmark(task, model_path, config_path, max_epochs):
             self._trainer = trainer
 
         def on_epoch_end(self, args, state, control, **kwargs):
-            if control.should_evaluate:
-                control_copy = deepcopy(control)
-                logits, labels, metrics = self._trainer.predict(valid_dataset)
+            control_copy = deepcopy(control)
+            logits, labels, metrics = self._trainer.predict(valid_dataset)
 
-                para = valid_dataset['idx.paragraph']
-                quest = valid_dataset['idx.question']
-                ans = valid_dataset['idx.answer']
+            para = valid_dataset['idx.paragraph']
+            quest = valid_dataset['idx.question']
+            ans = valid_dataset['idx.answer']
 
-                preds = np.argmax(logits, axis=-1)
-                predictions = []
-                for i in range(preds.size):
-                    predictions.append(
-                        {'idx': {'answer': ans[i], 'paragraph': para[i], 'question': quest[i]}, 'prediction': preds[i]}
-                    )
+            preds = np.argmax(logits, axis=-1)
+            predictions = []
+            for i in range(preds.size):
+                predictions.append(
+                    {'idx': {'answer': ans[i], 'paragraph': para[i], 'question': quest[i]}, 'prediction': preds[i]}
+                )
 
-                metric = load('super_glue', task)
-                out = metric.compute(predictions=predictions, references=labels)
-                wandb.log(out)
-                print(out)
+            metric = load('super_glue', task)
+            out = metric.compute(predictions=predictions, references=labels)
+            wandb.log(out)
+            print(out)
 
-                return control_copy
+            return control_copy
 
     # initialise weights and biases logging
     wandb.init(project="DEQBert-benchmarking", name=task)
