@@ -1,21 +1,36 @@
 # Deep-Equilibrium-BERT
+<img src="readme_src/DEQBert_Architecture.png" style="width: 300px">
 
-## DEQbert
+DEQBert does not really have massive difference from the original DEQ architecture. There are input injections (x) 
+into the QKV matrices. The input injection is precomputed and cached for each forward iteration.
 
-Copy [deep equilibrium model](https://arxiv.org/pdf/1909.01377.pdf) implementation. GitHub [here](https://github.com/locuslab/deq). Can probably reference the [Julia blogpost](https://julialang.org/blog/2021/10/DEQ/) for theoretical understanding, then implement with torchdyn library.
+Find the pretrained weights for deqbert-base uploaded to huggingface hub 
+here: https://huggingface.co/Clyde013/deqbert-base
 
-# TODO
+The uploaded model is a DEQBertForMaskedLM model, to use it for fine-tuning you can load it with `.from_pretrained()` into
+any other DEQBert model type such as DEQBertForQuestionAnswering or DEQBertForSequenceClassification. Huggingface will
+automatically load the deqbert model without the masked language modelling head if it is not needed, initialising the
+new model heads with random weights for fine-tuning.
+
+Loading the model is as simple as:
+```python
+from DEQBert.modeling_deqbert import DEQBertForMaskedLM
+model = DEQBertForMaskedLM.from_pretrained("Clyde013/deqbert-base")
+```
+
+Do note the performance of DEQBert does not come close to even matching regular BERT performance:
+
+<img src="readme_src/benchmark.jpg" style="width: 800px">
+
+
+Suggestions are more than welcome.
+
+# Future Work
+- [ ] Profile to look for inefficiency in train loop. I really don't think it should take 15 days to train.
 - [ ] Add wandb logging of NFEs
 - [ ] neural DEQ solver? https://openreview.net/pdf?id=B0oHOwT5ENL
 - [ ] jacobian free backprop? https://arxiv.org/pdf/2103.12803.pdf
-- [ ] train the thing to completion
-- [ ] complete benchmarking programs
 - [ ] Deepnorm implementation?
-
-## _MEH_ URGENCY
-- [ ] THE PILE DATASET NOT WORKING
-- [ ] Write the report paper so I can graduate.
-- [ ] profit????
 
 # Environment Setup
 ```
@@ -29,26 +44,6 @@ THE PILE (THANKS ELEUTHER VERY COOL) https://pile.eleuther.ai/
 
 OSCAR https://huggingface.co/datasets/oscar
 
-# References
+# Pretraining Hyperparameters
 
-TorchDyn github https://github.com/diffeqml/torchdyn
-
-Pytorch Implementation of differentiable ODE Solvers https://github.com/rtqichen/torchdiffeq
-
-Example implementations https://github.com/msurtsukov/neural-ode
-
-Huggingface training BERT for MLM and NSP https://stackoverflow.com/questions/65646925/how-to-train-bert-from-scratch-on-a-new-domain-for-both-mlm-and-nsp
-
-Arxiv Neural ODE https://arxiv.org/pdf/1806.07366.pdf
-
-Arxiv ODE Transformer https://arxiv.org/pdf/2104.02308.pdf
-
-Arxiv Deep Equilibrium Models https://arxiv.org/pdf/1909.01377.pdf
-
-Github DEQ https://github.com/locuslab/deq
-
-Julia blogpost on DEQ and ODE https://julialang.org/blog/2021/10/DEQ/
-
-Openpaper Review of Transformer ODE from multi-particle system POV https://openreview.net/forum?id=SJl1o2NFwS
-
-Github Transformer ODE https://github.com/libeineu/ODE-Transformer
+<img src="readme_src/hyperparams.jpg" width="300px"/>
