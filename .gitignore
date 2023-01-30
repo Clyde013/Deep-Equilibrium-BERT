@@ -2,7 +2,7 @@
 /wandb/
 /lightning_logs/
 /.ipynb_checkpoints/
-
+/profiler_results/
 
 
 # Byte-compiled / optimized / DLL files

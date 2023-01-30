@@ -8,7 +8,6 @@ from transformers.optimization import AdamW
 
 
 import wandb
-import torch
 from torch.optim.lr_scheduler import OneCycleLR
 
 # To specify the GPU to use you have to set the CUDA_VISIBLE_DEVICES="0" environment variable
@@ -69,5 +68,6 @@ trainer = Trainer(
     train_dataset=pile_dataset,
     optimizers=(optimizer, scheduler)
 )
+
 
 trainer.train()

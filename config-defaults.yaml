@@ -9,17 +9,17 @@
 
     load_checkpoint:
         description: load the model from this checkpoint (use null if no checkpoint)
-        value: './models/lucas-cont/checkpoint-60000/'
+        value: './models/lucas-cont/checkpoint-5000/'
 
     resume_steps:
         description: resuming training from checkpoint at this number of steps (if not resuming set to -1)
-        value: 60000
+        value: 85000
 
     # we don't use epochs because training between models is only comparable with steps and batch size
     # whereas epochs is dataset dependent
     batch_size:
         description: training batch size (per gpu device)
-        value: 32
+        value: 2
 
     # effective batch size is batch_size * grad_accum_steps
     grad_accum_steps:

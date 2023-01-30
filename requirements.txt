@@ -18,7 +18,7 @@ cffi==1.15.0
 charset-normalizer==2.0.12
 colorama==0.4.4
 cycler==0.11.0
-datasets==2.3.0
+datasets==2.9.0
 debugpy==1.6.0
 decorator==5.1.1
 defusedxml==0.7.1
