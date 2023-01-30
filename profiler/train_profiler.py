@@ -18,7 +18,7 @@ wandb.init(project="DEQBert-Profiler")
 wandb.run.name = wandb.config.run_name
 wandb.run.save()
 
-config = DEQBertConfig.from_pretrained("DEQBert/model_card/config.json")
+config = DEQBertConfig.from_pretrained("../DEQBert/model_card/config.json")
 config.is_decoder = False
 config.hidden_dropout_prob = wandb.config.hidden_dropout
 config.attention_probs_dropout_prob = wandb.config.attention_dropout
@@ -55,7 +55,7 @@ with profile(activities=[
         scheduler.last_epoch = wandb.config.resume_steps
 
         training_args = TrainingArguments(
-            output_dir='./models/profiler/',
+            output_dir='../models/profiler/',
             max_steps=1,
             per_device_train_batch_size=wandb.config.batch_size,
             gradient_accumulation_steps=wandb.config.grad_accum_steps,
@@ -78,10 +78,10 @@ with profile(activities=[
 
 print("profiling complete, exporting trace...")
 # view this file with chrome://tracing
-prof.export_chrome_trace("profiler_results/trace.json")
+prof.export_chrome_trace("results/trace.json")
 
 print("pickling profiler...")
 # just in case, we save the profiler object for later analysis
-outfile = open('profiler_results/profiler.pickle', 'wb')
+outfile = open('results/profiler.pickle', 'wb')
 pickle.dump(prof.key_averages(), outfile)
 outfile.close()
