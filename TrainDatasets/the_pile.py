@@ -14,6 +14,7 @@ class PileDataModule(LightningDataModule):
     def __init__(
             self,
             tokenizer: PreTrainedTokenizerBase,
+            stream: bool = False,
             buffer_size: int = 10000,
             max_seq_length: int = 128,
             train_batch_size: int = 32,
@@ -22,6 +23,7 @@ class PileDataModule(LightningDataModule):
     ):
         super().__init__()
         self.tokenizer = tokenizer
+        self.stream = stream
         self.buffer_size = buffer_size
         self.max_seq_length = max_seq_length
         self.train_batch_size = train_batch_size
@@ -30,9 +32,12 @@ class PileDataModule(LightningDataModule):
         self.dataset = None
 
     def setup(self, stage: str = None):
-        # stream the dataset as it is too large to download
-        self.dataset = datasets.load_dataset("the_pile", streaming=True, split="train", subsets=["all"])
-        self.dataset = self.dataset.shuffle(seed=69, buffer_size=self.buffer_size)
+        if self.stream:
+            self.dataset = datasets.load_dataset("the_pile", streaming=True, split="train", subsets=["all"])
+            self.dataset = self.dataset.shuffle(seed=69, buffer_size=self.buffer_size)
+        else:
+            self.dataset = datasets.load_dataset("the_pile", streaming=False, split="train", subsets=["all"])
+            self.dataset = self.dataset.shuffle(seed=69)
 
         # tokenize the dataset. scuffed af to manually remove denote the remove_columns but it works
         self.dataset = self.dataset.map(self.encode, batched=True, remove_columns=["text", "meta"]).with_format("torch")

@@ -28,7 +28,7 @@ if wandb.config.load_checkpoint is not None:
     # because this allows us to alter scheduler hyperparameters when resuming training.
     model = model.from_pretrained(wandb.config.load_checkpoint)
 
-pile_datamodule = the_pile.PileDataModule(tokenizer, max_seq_length=tokenizer.model_max_length)
+pile_datamodule = the_pile.PileDataModule(tokenizer, max_seq_length=tokenizer.model_max_length, stream=False)
 pile_datamodule.setup()
 pile_dataset = pile_datamodule.dataset
 
