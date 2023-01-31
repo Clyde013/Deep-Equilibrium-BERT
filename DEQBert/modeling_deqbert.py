@@ -84,9 +84,6 @@ class DEQBertLayer(nn.Module):
         self.b_thres = config.b_thres
         self.forward_out = None
         self.backward_out = None
-        # QKV input injections. Using a conv1d and then chunking into 3 is equivalent to running 3 linear layers
-        # Since our hidden states shape is [batch_size, seq_len, hidden_size] we have to transpose the input.
-        self.input_injection = nn.Conv1d(config.hidden_size, config.hidden_size*3, kernel_size=1)
 
     def feed_forward_chunk(self, attention_output):
         intermediate_output = self.intermediate(attention_output)
@@ -172,11 +169,8 @@ class DEQBertLayer(nn.Module):
             past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
             output_attentions: Optional[bool] = False,
     ) -> Tuple[torch.Tensor]:
-        # save computation by pre-calculating input injection. Remember to transpose as conv1d is cringe.
-        # After transposing twice, the shape of the output tensor is [batch_size, seq_len, hidden_size*3].
-        # We then chunk dim=2 (the hidden states) into 3 QKV matrices.
-        input_injection = self.input_injection(hidden_states.transpose(1,2)).transpose(1,2)
-        input_injection = torch.chunk(input_injection, 3, dim=2)
+        # precomputing the qkv input injection, so we reuse it for all root solver computations
+        input_injection = self.attention.self.qkv(hidden_states, None)
 
         # we have to transpose the input because huggingface uses [batch_size, seq_len, hidden_size] while the
         # solvers expect it in [batch_size, hidden_size, seq_len]. So we just transpose the input going in and out.
@@ -342,10 +336,31 @@ class DEQBertSelfAttention(nn.Module):
         x = x.view(new_x_shape)
         return x.permute(0, 2, 1, 3)
 
+    def qkv(
+            self,
+            hidden_states: torch.Tensor,
+            input_injection: Optional[Tuple[torch.Tensor]] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # normal qkv calculation
+        key_layer = self.transpose_for_scores(self.key(hidden_states))
+        value_layer = self.transpose_for_scores(self.value(hidden_states))
+
+        mixed_query_layer = self.query(hidden_states)
+        query_layer = self.transpose_for_scores(mixed_query_layer)
+
+        # add input injection if present. should always be present during normal forward pass. Only not present once,
+        # during the precomputation of input_injection itself.
+        if input_injection is not None:
+            query_layer += input_injection[0]
+            key_layer += input_injection[1]
+            value_layer += input_injection[2]
+
+        return query_layer, key_layer, value_layer
+
     def forward(
             self,
             hidden_states: torch.Tensor,
-            input_injection: Tuple[torch.Tensor],
+            input_injection: Tuple[torch.Tensor] = None,
             attention_mask: Optional[torch.FloatTensor] = None,
             head_mask: Optional[torch.FloatTensor] = None,
             encoder_hidden_states: Optional[torch.FloatTensor] = None,
@@ -353,9 +368,6 @@ class DEQBertSelfAttention(nn.Module):
             past_key_value: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
             output_attentions: Optional[bool] = False,
     ) -> Tuple[torch.Tensor]:
-        # input injection: input_injection is tuple(Q,K,V) matrices
-        mixed_query_layer = self.query(hidden_states + input_injection[0])
-
         # If this is instantiated as a cross-attention module, the keys
         # and values come from an encoder; the attention mask needs to be
         # such that the encoder's padding tokens are not attended to.
@@ -366,20 +378,19 @@ class DEQBertSelfAttention(nn.Module):
             key_layer = past_key_value[0]
             value_layer = past_key_value[1]
             attention_mask = encoder_attention_mask
+
+            mixed_query_layer = self.query(hidden_states)
+            query_layer = self.transpose_for_scores(mixed_query_layer)
         elif is_cross_attention:
             key_layer = self.transpose_for_scores(self.key(encoder_hidden_states))
             value_layer = self.transpose_for_scores(self.value(encoder_hidden_states))
             attention_mask = encoder_attention_mask
-        elif past_key_value is not None:
-            key_layer = self.transpose_for_scores(self.key(hidden_states + input_injection[1]))
-            value_layer = self.transpose_for_scores(self.value(hidden_states + input_injection[2]))
-            key_layer = torch.cat([past_key_value[0], key_layer], dim=2)
-            value_layer = torch.cat([past_key_value[1], value_layer], dim=2)
-        else:
-            key_layer = self.transpose_for_scores(self.key(hidden_states + input_injection[1]))
-            value_layer = self.transpose_for_scores(self.value(hidden_states + input_injection[2]))
 
-        query_layer = self.transpose_for_scores(mixed_query_layer)
+            mixed_query_layer = self.query(hidden_states)
+            query_layer = self.transpose_for_scores(mixed_query_layer)
+        else:
+            # calculate qkv with input injections
+            query_layer, key_layer, value_layer = self.qkv(hidden_states, input_injection)
 
         if self.is_decoder:
             # if cross_attention save Tuple(torch.Tensor, torch.Tensor) of all cross attention key/value_states.
@@ -483,7 +494,7 @@ class DEQBertAttention(nn.Module):
     def forward(
             self,
             hidden_states: torch.Tensor,
-            input_injection: Tuple[torch.Tensor],
+            input_injection: Tuple[torch.Tensor] = None,
             attention_mask: Optional[torch.FloatTensor] = None,
             head_mask: Optional[torch.FloatTensor] = None,
             encoder_hidden_states: Optional[torch.FloatTensor] = None,
