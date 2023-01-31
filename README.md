@@ -26,7 +26,8 @@ Do note the performance of DEQBert does not come close to even matching regular 
 Suggestions are more than welcome.
 
 # Future Work
-- [ ] Profile to look for inefficiency in train loop. I really don't think it should take 15 days to train.
+- [ ] Now that the profiler is working, it seems the conv1d op is 
+taking up a large chunk of time per step, might have to fix that.
 - [ ] Add wandb logging of NFEs
 - [ ] neural DEQ solver? https://openreview.net/pdf?id=B0oHOwT5ENL
 - [ ] jacobian free backprop? https://arxiv.org/pdf/2103.12803.pdf
