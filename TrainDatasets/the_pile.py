@@ -3,6 +3,8 @@ from torch.utils.data import DataLoader
 import datasets
 from pytorch_lightning import LightningDataModule
 
+_HOST_URL = "https://the-eye.eu"
+_TRAIN_SOURCE_FILES = {"train": [f"{_HOST_URL}/public/AI/pile/train/{i:0>2}.jsonl.zst" for i in range(30)]}
 
 class PileDataModule(LightningDataModule):
     """
@@ -36,7 +38,7 @@ class PileDataModule(LightningDataModule):
             self.dataset = datasets.load_dataset("the_pile", streaming=True, split="train", subsets=["all"])
             self.dataset = self.dataset.shuffle(seed=69, buffer_size=self.buffer_size)
         else:
-            self.dataset = datasets.load_dataset("the_pile", streaming=False, split="train", subsets=["all"])
+            self.dataset = datasets.load_dataset("json", data_files=_TRAIN_SOURCE_FILES)
             self.dataset = self.dataset.shuffle(seed=69)
 
         # tokenize the dataset. scuffed af to manually remove denote the remove_columns but it works
