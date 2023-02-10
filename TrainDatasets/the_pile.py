@@ -4,7 +4,8 @@ import datasets
 from pytorch_lightning import LightningDataModule
 
 _HOST_URL = "https://the-eye.eu"
-_TRAIN_SOURCE_FILES = {"train": [f"{_HOST_URL}/public/AI/pile/train/{i:0>2}.jsonl.zst" for i in range(30)]}
+_TRAIN_SOURCE_FILES = [(i, f"{_HOST_URL}/public/AI/pile/train/{i:0>2}.jsonl.zst") for i in range(30)]
+
 
 class PileDataModule(LightningDataModule):
     """
@@ -38,7 +39,15 @@ class PileDataModule(LightningDataModule):
             self.dataset = datasets.load_dataset("the_pile", streaming=True, split="train", subsets=["all"])
             self.dataset = self.dataset.shuffle(seed=69, buffer_size=self.buffer_size)
         else:
-            self.dataset = datasets.load_dataset("json", data_files=_TRAIN_SOURCE_FILES)
+            # the problem is that if the internet cuts out for a while during download, it cancels the whole 815GB
+            # dataset download, and you have to start from scratch. Downloading each as individual datasets allows the
+            # caching to be complete and registered by huggingface datasets, so when it does crash, huggingface will
+            # load the cached splits instead.
+            individual_pilesplits = []
+            for i, url in _TRAIN_SOURCE_FILES:
+                individual_pilesplits.append(datasets.load_dataset(f"pile_split_{i}", data_files={"train": url}))
+
+            self.dataset = datasets.concatenate_datasets(individual_pilesplits)
             self.dataset = self.dataset.shuffle(seed=69)
 
         # tokenize the dataset. scuffed af to manually remove denote the remove_columns but it works
