@@ -1,10 +1,14 @@
 from transformers import DataCollatorForLanguageModeling, PreTrainedTokenizerBase, RobertaTokenizer
 from torch.utils.data import DataLoader
 import datasets
+from datasets import DownloadConfig
 from pytorch_lightning import LightningDataModule
 
 _HOST_URL = "https://the-eye.eu"
 _TRAIN_SOURCE_FILES = {"train": [f"{_HOST_URL}/public/AI/pile/train/{i:0>2}.jsonl.zst" for i in range(30)]}
+_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
+              "Chrome/86.0.4240.75 Safari/537.36"
+
 
 class PileDataModule(LightningDataModule):
     """
@@ -38,7 +42,10 @@ class PileDataModule(LightningDataModule):
             self.dataset = datasets.load_dataset("the_pile", streaming=True, split="train", subsets=["all"])
             self.dataset = self.dataset.shuffle(seed=69, buffer_size=self.buffer_size)
         else:
-            self.dataset = datasets.load_dataset("json", data_files=_TRAIN_SOURCE_FILES)
+            config = DownloadConfig(resume_download=True,
+                                    user_agent=_USER_AGENT,
+                                    max_retries=3)
+            self.dataset = datasets.load_dataset("json", data_files=_TRAIN_SOURCE_FILES, download_config=config)
             self.dataset = self.dataset.shuffle(seed=69)
 
         # tokenize the dataset. scuffed af to manually remove denote the remove_columns but it works
