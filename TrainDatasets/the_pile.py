@@ -44,7 +44,7 @@ class PileDataModule(LightningDataModule):
         else:
             config = DownloadConfig(resume_download=True,
                                     user_agent=_USER_AGENT,
-                                    max_retries=3)
+                                    max_retries=10)
             self.dataset = datasets.load_dataset("json", data_files=_TRAIN_SOURCE_FILES, download_config=config)
             self.dataset = self.dataset.shuffle(seed=69)
 
@@ -76,7 +76,15 @@ if __name__ == "__main__":
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
     pile_datamodule = PileDataModule(tokenizer)
-    pile_datamodule.setup()
+
+    # i actually give up. there are too many https connection, ssl timeouts and connection reset by peer errors
+    while True:
+        try:
+            pile_datamodule.setup()
+            break
+        except:
+            continue
+
     pile_dataset = pile_datamodule.dataset
 
     print(list(pile_dataset.take(3)))
