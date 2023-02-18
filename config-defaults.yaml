@@ -1,25 +1,25 @@
 ---
     run_name:
         description: wandb run name
-        value: 'lucas-config-cont'
+        value: 'deqbert-base'
 
     output_dir:
         description: output directory for saved models
-        value: './models/lucas-cont/'
+        value: './models/base/'
 
     load_checkpoint:
         description: load the model from this checkpoint (use null if no checkpoint)
-        value: './models/lucas-cont/checkpoint-5000/'
+        value: null
 
     resume_steps:
         description: resuming training from checkpoint at this number of steps (if not resuming set to -1)
-        value: 85000
+        value: -1
 
     # we don't use epochs because training between models is only comparable with steps and batch size
     # whereas epochs is dataset dependent
     batch_size:
         description: training batch size (per gpu device)
-        value: 2
+        value: 32
 
     # effective batch size is batch_size * grad_accum_steps
     grad_accum_steps:
