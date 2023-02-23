@@ -1,3 +1,4 @@
+import argparse
 import pickle
 
 import datasets
@@ -5,6 +6,7 @@ from transformers import DataCollatorForLanguageModeling
 from DEQBert.tokenization_deqbert import DEQBertTokenizer
 from DEQBert.configuration_deqbert import DEQBertConfig
 from DEQBert.modeling_deqbert import DEQBertForMaskedLM
+from TrainDatasets import the_pile
 from transformers import Trainer, TrainingArguments
 from transformers.optimization import AdamW
 
@@ -14,6 +16,10 @@ from torch.profiler import profile, record_function, ProfilerActivity
 from torch.optim.lr_scheduler import OneCycleLR
 
 if __name__ == "__main__":
+    # true: use the cached the_pile dataset if you have downloaded it
+    # false: will download smaller hacker_news subset of the_pile for profiling
+    use_cache = True
+
     # To specify the GPU to use you have to set the CUDA_VISIBLE_DEVICES="0" environment variable
     wandb.init(project="DEQBert-Profiler")
     wandb.run.name = wandb.config.run_name
@@ -36,16 +42,23 @@ if __name__ == "__main__":
                 # because this allows us to alter scheduler hyperparameters when resuming training.
                 model = model.from_pretrained(wandb.config.load_checkpoint)
 
-            # while would preferably use the_pile datamodule, it is inconvenient to download the entire dataset + map the
-            # encoding function to it. So we simply copy-paste the relevant parts and apply it to the hacker_news subset
-            def encode(example_batch):
-                # tokenize the text
-                features = tokenizer(example_batch["text"], max_length=128, padding="max_length",
-                                          truncation=True, return_tensors="pt")
-                return features
-            pile_dataset = datasets.load_dataset("the_pile", streaming=False, split="train", subsets=["hacker_news"]).select(range(32))
-            pile_dataset = pile_dataset.shuffle(seed=69)
-            pile_dataset = pile_dataset.map(encode, batched=True, remove_columns=["text", "meta"]).with_format("torch")
+            if use_cache:
+                # while would preferably use the_pile datamodule, it is inconvenient to download the entire dataset + map the
+                # encoding function to it. So we simply copy-paste the relevant parts and apply it to the hacker_news subset
+                def encode(example_batch):
+                    # tokenize the text
+                    features = tokenizer(example_batch["text"], max_length=128, padding="max_length",
+                                              truncation=True, return_tensors="pt")
+                    return features
+                pile_dataset = datasets.load_dataset("the_pile", streaming=False, split="train", subsets=["hacker_news"]).select(range(32))
+                pile_dataset = pile_dataset.shuffle(seed=69)
+                pile_dataset = pile_dataset.map(encode, batched=True, remove_columns=["text", "meta"]).with_format("torch")
+            else:
+                # the pile data is already downloaded and cached, use that instead.
+                pile_datamodule = the_pile.PileDataModule(tokenizer, max_seq_length=tokenizer.model_max_length,
+                                                          stream=False)
+                pile_datamodule.setup()
+                pile_dataset = pile_datamodule.dataset
 
             data_collator = DataCollatorForLanguageModeling(
                 tokenizer=tokenizer, mlm=True, mlm_probability=wandb.config.mlm_probability
