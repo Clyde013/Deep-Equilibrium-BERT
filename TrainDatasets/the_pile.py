@@ -24,6 +24,7 @@ class PileDataModule(LightningDataModule):
             self,
             tokenizer: PreTrainedTokenizerBase,
             stream: bool = False,
+            use_cached: bool = True,
             buffer_size: int = 10_000,
             max_seq_length: int = 128,
             train_batch_size: int = 32,
@@ -33,6 +34,7 @@ class PileDataModule(LightningDataModule):
         super().__init__()
         self.tokenizer = tokenizer
         self.stream = stream
+        self.use_cached = use_cached
         self.buffer_size = buffer_size
         self.max_seq_length = max_seq_length
         self.train_batch_size = train_batch_size
@@ -43,7 +45,7 @@ class PileDataModule(LightningDataModule):
     def setup(self, stage: str = None):
         if self.stream:
             self.dataset = datasets.load_dataset("the_pile", streaming=True, split="train", subsets=["all"])
-        else:
+        elif not self.use_cached:
             # first download the dataset from online
             config = DownloadConfig(resume_download=True,
                                     user_agent=_USER_AGENT,
@@ -51,6 +53,8 @@ class PileDataModule(LightningDataModule):
             # if the dataset is already downloaded, it will resolve the files as cached
             self.dataset = datasets.load_dataset("json", data_files=_TRAIN_SOURCE_FILES, download_config=config,
                                                  cache_dir=_CACHE_DIR)
+
+        if self.use_cached:
             # then we stream the local dataset, since it's actually impossible to load the entire pile dataset into
             # memory and map the tokenizer function over it
             self.dataset = datasets.load_dataset("json", data_files=_EXTRACTED_FILES, split="train", streaming=True)
